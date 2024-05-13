@@ -13,23 +13,17 @@ abstract contract StakedFraxFunctions is BaseTest {
 contract TestSetMaxDistributionPerSecondPerAsset is BaseTest, StakedFraxFunctions {
     /// FEATURE: setMaxDistributionPerSecondPerAsset
 
-    /*function test_CannotCallIfNotTimelock() public {
-        /// WHEN: non-timelock calls setMaxDistributionPerSecondPerAsset
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Timelock2Step.AddressIsNotTimelock.selector,
-                stakedEbtc.timelockAddress(),
-                address(this)
-            )
-        );
-        stakedFrax.setMaxDistributionPerSecondPerAsset(1 ether);
-        /// THEN: we expect a revert with the AddressIsNotTimelock error
+    function test_CannotCallIfNotTimelock() public {
+        /// WHEN: unauthorized calls setMaxDistributionPerSecondPerAsset should fail
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        stakedEbtc.setMaxDistributionPerSecondPerAsset(1 ether);
+        /// THEN: we expect a revert with the Auth: UNAUTHORIZED error
     }
 
     function test_CannotSetAboveUint64() public {
-        StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
-        /// WHEN: timelock sets maxDistributionPerSecondPerAsset to uint64.max + 1
+        /// WHEN: governance sets maxDistributionPerSecondPerAsset to uint64.max + 1
         _stakedFrax_setMaxDistributionPerSecondPerAsset(uint256(type(uint64).max) + 1);
 
         DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
@@ -42,12 +36,12 @@ contract TestSetMaxDistributionPerSecondPerAsset is BaseTest, StakedFraxFunction
             type(uint64).max,
             "THEN: values should be equal to uint64.max"
         );
-    }*/
+    }
 
     function test_CanSetMaxDistributionPerSecondPerAsset() public {
         StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
-        /// WHEN: timelock sets maxDistributionPerSecondPerAsset to 1 ether
+        /// WHEN: governance sets maxDistributionPerSecondPerAsset to 1 ether
         _stakedFrax_setMaxDistributionPerSecondPerAsset(1 ether);
 
         DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(

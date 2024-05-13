@@ -16,24 +16,15 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
     /// @notice The maximum amount of rewards that can be distributed per second per 1e18 asset
     uint256 public maxDistributionPerSecondPerAsset;
 
-    mapping(address => bool) public approvedDonors;
-
     event Donation(address indexed donor, uint256 amount);
-    event DonorApprovalUpdated(address indexed donor, bool approved);
 
     /// @notice Receive an eBTC donation from an authorized donor
-    function donate(uint256 amount) external {
-        require(approvedDonors[msg.sender], "StakedEBtc: invalid donor");
+    function donate(uint256 amount) external requiresAuth {
         donationBalance += amount;
         asset.safeTransferFrom(msg.sender, address(this), amount);
         emit Donation(msg.sender, amount);
     }
-
-    function setApprovedDonor(address donor, bool approved) external requiresAuth() {
-        approvedDonors[donor] = approved;
-        emit DonorApprovalUpdated(donor, approved);
-    }
-
+    
     /// @param _underlying The erc20 asset deposited
     /// @param _name The name of the vault
     /// @param _symbol The symbol of the vault
