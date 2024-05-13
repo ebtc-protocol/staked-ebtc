@@ -5,11 +5,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeCastLib } from "@solmate/utils/SafeCastLib.sol";
 import { SafeTransferLib } from "@solmate/utils/SafeTransferLib.sol";
 import { LinearRewardsErc4626, ERC20 } from "./LinearRewardsErc4626.sol";
-import { AuthNoOwner } from "./AuthNoOwner.sol";
+import { AuthNoOwner } from "./Dependencies/AuthNoOwner.sol";
 
 /// @title Staked eBTC
 /// @notice A ERC4626 Vault implementation with linear rewards, rewards can be capped
-contract StakedEBtc is LinearRewardsErc4626, AuthNoOwner {
+contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
     using SafeTransferLib for ERC20;
     using SafeCastLib for *;
 
