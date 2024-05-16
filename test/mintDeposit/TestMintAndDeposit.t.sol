@@ -184,7 +184,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         );
     }
 
-  /*  function test_CanMintWithRewardsCappedRewards() public {
+    function test_CanMintWithRewardsCappedRewards() public {
         /// SCENARIO: A user deposits 1000 FRAX and should have 50% of the shares, 600 FRAX is distributed as rewards, uncapped
 
         //==============================================================================
@@ -197,14 +197,16 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
 
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
         uint256 _syncDuration = 400_000;
-        mineBlocksToTimestamp(stakedFrax.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
+        mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
         /// GIVEN: 600 FRAX is transferred as rewards
         uint256 _rewards = 600 ether;
-        mintFraxTo(stakedFraxAddress, _rewards);
+       // mintFraxTo(stakedFraxAddress, _rewards);
+        vm.prank(defaultGovernance);
+        stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
-        stakedFrax.syncRewardsAndDistribution();
+        stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
         uint256 _timeSinceLastRewardsDistribution = 100_000;
@@ -214,7 +216,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         // Act
         //==============================================================================
 
-        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
         /// WHEN: A user mints 1000 FRAX
         // uint256 _expectedSharesToMint = stakedFrax.convertToShares(1000 ether);
@@ -241,7 +243,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         );
 
         /// THEN: the user should have 1000 shares
-        assertEq(stakedFrax.balanceOf(bob), 1000 ether, "THEN: the user should have 1000 shares");
+        assertEq(stakedEbtc.balanceOf(bob), 1000 ether, "THEN: the user should have 1000 shares");
 
         /// THEN: The totalSupply should have increased by _expectedShares
         assertEq(
@@ -263,19 +265,21 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         uint256 _timeSinceLastRewardsDistribution = 100_000;
         uint256 _rewards = 600 ether;
 
-        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
         /// GIVEN: maxDistributionPerSecondPerAsset is uncapped
         _stakedFrax_setMaxDistributionPerSecondPerAsset(_maxDistributionPerSecondPerAsset);
 
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
-        mineBlocksToTimestamp(stakedFrax.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
+        mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
         /// GIVEN: 600 FRAX is transferred as rewards
-        mintFraxTo(stakedFraxAddress, _rewards);
+   //     mintFraxTo(stakedFraxAddress, _rewards);
+        vm.prank(defaultGovernance);
+        stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
-        stakedFrax.syncRewardsAndDistribution();
+        stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
         mineBlocksBySecond(_timeSinceLastRewardsDistribution);
@@ -307,7 +311,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         );
 
         /// THEN: the user should have 1000 shares
-        assertEq(stakedFrax.balanceOf(bob), 1000 ether, "THEN: the user should have 1000 shares");
+        assertEq(stakedEbtc.balanceOf(bob), 1000 ether, "THEN: the user should have 1000 shares");
     }
 
     function test_CanDepositWithRewardsCap() public {
@@ -322,19 +326,21 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         uint256 _timeSinceLastRewardsDistribution = 100_000;
         uint256 _rewards = 600 ether;
 
-        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
         /// GIVEN: maxDistributionPerSecondPerAsset is uncapped
         _stakedFrax_setMaxDistributionPerSecondPerAsset(_maxDistributionPerSecondPerAsset);
 
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
-        mineBlocksToTimestamp(stakedFrax.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
+        mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
         /// GIVEN: 600 FRAX is transferred as rewards
-        mintFraxTo(stakedFraxAddress, _rewards);
+      //  mintFraxTo(stakedFraxAddress, _rewards);
+        vm.prank(defaultGovernance);
+        stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
-        stakedFrax.syncRewardsAndDistribution();
+        stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
         mineBlocksBySecond(_timeSinceLastRewardsDistribution);
@@ -364,7 +370,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         uint256 _expectedShares = (uint256(1000e18) * 1000e18) / 1150e18;
         /// THEN: The user should have 1000e18 * 1000e18 / 1150e18 shares
         assertEq(
-            stakedFrax.balanceOf(bob),
+            stakedEbtc.balanceOf(bob),
             _expectedShares,
             "THEN: The user should have 1000e18 * 1000e18 / 1150e18 shares"
         );
@@ -375,5 +381,5 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
             _expectedShares,
             " THEN: The totalSupply should have increased by _expectedShares"
         );
-    } */
+    }
 }
