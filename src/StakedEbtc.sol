@@ -20,7 +20,7 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
 
     /// @notice Receive an eBTC donation from an authorized donor
     function donate(uint256 amount) external requiresAuth {
-        donationBalance += amount;
+        totalBalance += amount;
         asset.safeTransferFrom(msg.sender, address(this), amount);
         emit Donation(msg.sender, amount);
     }

@@ -21,7 +21,7 @@ abstract contract mintDepositFunctions is BaseTest {
 contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctions {
     /// FEATURE: mint and deposit
 
-/*    using StakedFraxStructHelper for *;
+    using StakedEbtcStructHelper for *;
 
     address bob;
     address alice;
@@ -29,32 +29,32 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
 
     address joe;
 
-    function setUp() public {
+    function setUp() public override {
         /// BACKGROUND: deploy the StakedFrax contract
         /// BACKGROUND: 10% APY cap
         /// BACKGROUND: frax as the underlying asset
         /// BACKGROUND: TIMELOCK_ADDRESS set as the timelock address
-        defaultSetup();
+        super.setUp();
 
         bob = labelAndDeal(address(1234), "bob");
-        mintFraxTo(bob, 5000 ether);
-        hoax(bob);
-        fraxErc20.approve(stakedFraxAddress, type(uint256).max);
+        mintEbtcTo(bob, 5000 ether);
+        vm.prank(bob);
+        mockEbtc.approve(stakedFraxAddress, type(uint256).max);
 
         alice = labelAndDeal(address(2345), "alice");
-        mintFraxTo(alice, 5000 ether);
-        hoax(alice);
-        fraxErc20.approve(stakedFraxAddress, type(uint256).max);
+        mintEbtcTo(alice, 5000 ether);
+        vm.prank(alice);
+        mockEbtc.approve(stakedFraxAddress, type(uint256).max);
 
         donald = labelAndDeal(address(3456), "donald");
-        mintFraxTo(donald, 5000 ether);
-        hoax(donald);
-        fraxErc20.approve(stakedFraxAddress, type(uint256).max);
+        mintEbtcTo(donald, 5000 ether);
+        vm.prank(donald);
+        mockEbtc.approve(stakedFraxAddress, type(uint256).max);
 
         joe = labelAndDeal(address(4567), "joe");
-        mintFraxTo(joe, 5000 ether);
-        hoax(joe);
-        fraxErc20.approve(stakedFraxAddress, type(uint256).max);
+        mintEbtcTo(joe, 5000 ether);
+        vm.prank(joe);
+        mockEbtc.approve(stakedFraxAddress, type(uint256).max);
     }
 
     function test_CanDepositNoRewards() public {
@@ -64,7 +64,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         // Act
         //==============================================================================
 
-        StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
         /// WHEN: bob deposits 1000 FRAX
         _stakedFrax_deposit(1000 ether, bob);
@@ -78,7 +78,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         //==============================================================================
 
         /// THEN: The user should have 1000 shares
-        assertEq(stakedFrax.balanceOf(bob), 1000 ether, "THEN: The user should have 2000 shares");
+        assertEq(stakedEbtc.balanceOf(bob), 1000 ether, "THEN: The user should have 2000 shares");
 
         /// THEN: The totalSupply should have increased by 1000 shares
         assertEq(
@@ -116,7 +116,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         // Arrange
         //==============================================================================
 
-        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedFrax);
+        StakedFraxStorageSnapshot memory _initial_stakedFraxSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
         /// GIVEN: maxDistributionPerSecondPerAsset is at 3_033_347_948 per second per 1e18 asset (roughly 10% APY)
         uint256 _maxDistributionPerSecondPerAsset = 3_033_347_948;
@@ -124,14 +124,16 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
 
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
         uint256 _syncDuration = 400_000;
-        mineBlocksToTimestamp(stakedFrax.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
+        mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
         /// GIVEN: 600 FRAX is transferred as rewards
         uint256 _rewards = 600 ether;
-        mintFraxTo(stakedFraxAddress, _rewards);
+//        mintEbtcTo(stakedFraxAddress, _rewards);
+        vm.prank(defaultGovernance);
+        stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
-        stakedFrax.syncRewardsAndDistribution();
+        stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
         uint256 _timeSinceLastRewardsDistribution = 100_000;
@@ -169,7 +171,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         uint256 _expectedShares = (uint256(1000e18) * 1000e18) / (1000e18 + _expectedRewards);
         /// THEN: The user should have 1000e18 * 1000e18 / 1150e18 shares
         assertEq(
-            stakedFrax.balanceOf(bob),
+            stakedEbtc.balanceOf(bob),
             _expectedShares,
             "THEN: The user should have 1000e18 * 1000e18 / (1000 + _expectedRewards) shares"
         );
@@ -182,7 +184,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         );
     }
 
-    function test_CanMintWithRewardsCappedRewards() public {
+  /*  function test_CanMintWithRewardsCappedRewards() public {
         /// SCENARIO: A user deposits 1000 FRAX and should have 50% of the shares, 600 FRAX is distributed as rewards, uncapped
 
         //==============================================================================

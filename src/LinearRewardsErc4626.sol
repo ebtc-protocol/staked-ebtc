@@ -43,7 +43,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @notice The total amount of assets that have been distributed and deposited
     uint256 public storedTotalAssets;
 
-    uint256 public donationBalance;
+    uint256 public totalBalance;
 
     /// @notice The precision of the underlying asset
     uint256 public immutable UNDERLYING_PRECISION;
@@ -131,7 +131,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
         if (_timestamp <= _rewardsCycleData.cycleEnd) return _rewardsCycleData;
 
         // Calculate rewards for next cycle
-        uint256 _newRewards = donationBalance - storedTotalAssets;
+        uint256 _newRewards = totalBalance - storedTotalAssets;
 
         // Calculate the next cycle end, this keeps cycles at the same time regardless of when sync is called
         uint40 _cycleEnd = (((_timestamp + REWARDS_CYCLE_LENGTH) / REWARDS_CYCLE_LENGTH) * REWARDS_CYCLE_LENGTH)
@@ -189,6 +189,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
 
     function afterDeposit(uint256 amount, uint256 shares) internal virtual override {
         storedTotalAssets += amount;
+        totalBalance += amount;
     }
 
     /// @notice The ```deposit``` function allows a user to mint shares by depositing underlying
@@ -211,7 +212,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
 
     function beforeWithdraw(uint256 amount, uint256 shares) internal virtual override {
         storedTotalAssets -= amount;
-        donationBalance -= amount;
+        totalBalance -= amount;
     }
 
     /// @notice The ```withdraw``` function allows a user to withdraw a given amount of underlying

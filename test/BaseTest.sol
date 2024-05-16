@@ -12,14 +12,21 @@ import { ERC20Mock } from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 contract BaseTest is Test {
     using StakedEbtcStructHelper for *;
 
+    struct MineBlocksResult {
+        uint256 timeElapsed;
+        uint256 blocksElapsed;
+        uint256 currentTimestamp;
+        uint256 currentBlockNumber;
+    }
+
     StakedEbtc public stakedEbtc;
     address public stakedFraxAddress;
     uint256 public rewardsCycleLength;
-    IERC20 public mockEbtc;
+    ERC20Mock public mockEbtc;
     address internal defaultGovernance;
     Governor internal governor;
 
-    function setUp() public {
+    function setUp() public virtual {
         defaultGovernance = vm.addr(0x123456);
         governor = new Governor(defaultGovernance);
         mockEbtc = new ERC20Mock();
@@ -34,13 +41,57 @@ contract BaseTest is Test {
             _maxDistributionPerSecondPerAsset: TEN_PERCENT,
             _authorityAddress: address(governor)
         });
+        stakedFraxAddress = address(stakedEbtc);
 
         vm.startPrank(defaultGovernance);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
         governor.setUserRole(defaultGovernance, 12, true);
         vm.stopPrank();
 
+        mockEbtc.mint(defaultGovernance, 1000000e18);
+
+        // initialize stakedEbtc with 1000 to match the sFrax behavior
+        vm.startPrank(defaultGovernance);
+        mockEbtc.approve(address(stakedEbtc), type(uint256).max);
+        stakedEbtc.deposit(1000e18, defaultGovernance);
+        vm.stopPrank();
+
         rewardsCycleLength = stakedEbtc.REWARDS_CYCLE_LENGTH();
+    }
+
+    function mintEbtcTo(address _to, uint256 _amount) public returns (uint256 _minted) {
+        mockEbtc.mint(_to, _amount);
+    }
+
+    function labelAndDeal(address _address, string memory _label) public returns (address payable) {
+        vm.label(_address, _label);
+        vm.deal(_address, 1_000_000_000);
+        return payable(_address);
+    }
+
+    function mineBlocksBySecond(uint256 secondsElapsed) public returns (MineBlocksResult memory result) {
+        uint256 timeElapsed = secondsElapsed;
+        uint256 blocksElapsed = secondsElapsed / 12;
+        vm.warp(block.timestamp + timeElapsed);
+        vm.roll(block.number + blocksElapsed);
+
+        result.timeElapsed = timeElapsed;
+        result.blocksElapsed = blocksElapsed;
+        result.currentTimestamp = block.timestamp;
+        result.currentBlockNumber = block.number;
+    }
+
+    function mineBlocksToTimestamp(uint256 _timestamp) public returns (MineBlocksResult memory result) {
+        uint256 timeElapsed = _timestamp - block.timestamp;
+        uint256 blocksElapsed = timeElapsed / 12;
+        vm.warp(_timestamp);
+        vm.roll(block.number + blocksElapsed);
+
+        result.timeElapsed = timeElapsed;
+        result.blocksElapsed = blocksElapsed;
+        result.currentTimestamp = block.timestamp;
+        result.currentBlockNumber = block.number;
     }
 }
 
