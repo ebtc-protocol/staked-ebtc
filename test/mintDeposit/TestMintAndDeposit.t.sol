@@ -128,7 +128,10 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
 
         /// GIVEN: 600 FRAX is transferred as rewards
         uint256 _rewards = 600 ether;
-//        mintEbtcTo(stakedFraxAddress, _rewards);
+
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, _rewards);
+
         vm.prank(defaultGovernance);
         stakedEbtc.donate(_rewards);
 

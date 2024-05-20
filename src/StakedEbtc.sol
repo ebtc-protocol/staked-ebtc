@@ -24,6 +24,20 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
         asset.safeTransferFrom(msg.sender, address(this), amount);
         emit Donation(msg.sender, amount);
     }
+
+    /// @notice Sweep unauthorized donations and extra tokens
+    function sweep(address token) external requiresAuth {
+        if (token == address(asset)) {
+            uint256 currentBalance = asset.balanceOf(address(this));
+            if (currentBalance > totalBalance) {
+                unchecked {
+                    asset.safeTransfer(msg.sender, currentBalance - totalBalance);
+                }
+            }
+        } else {
+            ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
+        }
+    }
     
     /// @param _underlying The erc20 asset deposited
     /// @param _name The name of the vault
