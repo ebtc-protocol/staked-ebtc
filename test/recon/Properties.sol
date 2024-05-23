@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
 import {Setup} from "./Setup.sol";
+import "forge-std/console.sol";
 
 abstract contract Properties is Setup, Asserts {
     function total_balance_below_actual_balance() public returns (bool) {
@@ -27,6 +28,8 @@ abstract contract Properties is Setup, Asserts {
         for (uint256 i; i < senders.length; i++) {
             sumOfUserAssets += stakedEbtc.convertToAssets(stakedEbtc.balanceOf(senders[i]));
         }
+        console.log("sumOfUserAssets", sumOfUserAssets);
+        console.log("stakedEbtc.totalAssets()", stakedEbtc.totalAssets());
         t(sumOfUserAssets == stakedEbtc.totalAssets(), "sumOfUserAssets == totalAssets");
     }
 }

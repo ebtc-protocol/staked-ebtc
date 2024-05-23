@@ -6,13 +6,24 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {Properties} from "./Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
+import "forge-std/console.sol";
 
 abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfter {
     uint256 public constant MAX_EBTC = 1e27;
     address internal senderAddr;
 
-    function deposit(uint256 amount) public {
-        senderAddr = msg.sender;
+    modifier setSender() {
+        if (senderAddr == address(0)) {
+            senderAddr = msg.sender;
+        }
+        _;
+    }
+
+    function setSenderAddr(address newAddr) internal {
+        senderAddr = newAddr;
+    }
+
+    function deposit(uint256 amount) public setSender {
         amount = between(amount, 1, MAX_EBTC);
 
         mockEbtc.mint(senderAddr, amount);
@@ -23,12 +34,13 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         vm.prank(senderAddr);
         try stakedEbtc.deposit(amount, senderAddr) {
         } catch {
-            t(false, "call shouldn't fail");
+            if (stakedEbtc.previewDeposit(amount) > 0) {
+                t(false, "call shouldn't fail");
+            }
         }
     }
 
-    function redeem(uint256 shares) public {
-        senderAddr = msg.sender;
+    function redeem(uint256 shares) public setSender {
         shares = between(shares, 0, stakedEbtc.balanceOf(senderAddr));
 
         vm.prank(senderAddr);
@@ -40,7 +52,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         }
     }
 
-    function donate(uint256 amount, bool authorized) public {
+    function donate(uint256 amount, bool authorized) public setSender {
         amount = between(amount, 1, MAX_EBTC);
 
         mockEbtc.mint(defaultGovernance, amount);
@@ -66,7 +78,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         }
     }
 
-    function sweep(uint256 amount) public {
+    function sweep(uint256 amount) public setSender {
         amount = between(amount, 1, MAX_EBTC);
 
         mockEbtc.mint(address(stakedEbtc), amount);
