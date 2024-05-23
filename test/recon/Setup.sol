@@ -47,7 +47,13 @@ abstract contract Setup is BaseSetup {
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
 
         vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
+
+        vm.prank(defaultGovernance);
         governor.setUserRole(defaultGovernance, 12, true);
+
+        vm.prank(defaultGovernance);
+        mockEbtc.approve(address(stakedEbtc), type(uint256).max);
 
         senders.push(address(0x10000));
         senders.push(address(0x20000));

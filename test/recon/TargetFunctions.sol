@@ -39,4 +39,47 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
             }
         }
     }
+
+    function donate(uint256 amount, bool authorized) public {
+        amount = between(amount, 1, MAX_EBTC);
+
+        mockEbtc.mint(defaultGovernance, amount);
+
+        __before();
+
+        if (authorized) {
+            vm.prank(defaultGovernance);
+            try stakedEbtc.donate(amount) {
+                __after();
+
+                t(_after.totalBalance > _before.totalBalance, "totalBalance should go up after an authorized donation");
+            } catch {
+                t(false, "call shouldn't fail");
+            }
+        } else {
+            vm.prank(defaultGovernance);
+            mockEbtc.transfer(address(stakedEbtc), amount);
+            
+            __after();
+ 
+            t(_after.totalBalance == _before.totalBalance, "totalBalance should not go up after an unauthorized donation");
+        }
+    }
+
+    function sweep(uint256 amount) public {
+        amount = between(amount, 1, MAX_EBTC);
+
+        mockEbtc.mint(address(stakedEbtc), amount);
+
+        __before();
+
+        vm.prank(defaultGovernance);
+        try stakedEbtc.sweep(address(mockEbtc)) {
+            __after();
+            t(_after.actualBalance < _before.actualBalance, "actualBalance should go down after sweep()");
+            t(_after.totalBalance == _before.totalBalance, "totalBalance should not be affected by sweep()");
+        } catch {
+            t(false, "call shouldn't fail");
+        }
+    }
 }
