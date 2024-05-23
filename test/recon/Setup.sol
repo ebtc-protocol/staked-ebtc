@@ -22,6 +22,7 @@ abstract contract Setup is BaseSetup {
     MockERC20 internal mockEbtc;
     address internal defaultGovernance;
     Governor internal governor;
+    address[] internal senders;
 
     function setup() internal virtual override {
         defaultGovernance = vm.addr(0x123456);
@@ -47,5 +48,9 @@ abstract contract Setup is BaseSetup {
 
         vm.prank(defaultGovernance);
         governor.setUserRole(defaultGovernance, 12, true);
+
+        senders.push(address(0x10000));
+        senders.push(address(0x20000));
+        senders.push(address(0x30000));
     }
 }

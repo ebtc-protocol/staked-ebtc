@@ -29,8 +29,4 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
             t(false, "call shouldn't fail");
         }
     }
-
-    /*function donate() public {
-        
-    }*/
 }

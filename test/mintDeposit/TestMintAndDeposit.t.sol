@@ -204,7 +204,10 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
 
         /// GIVEN: 600 FRAX is transferred as rewards
         uint256 _rewards = 600 ether;
-       // mintFraxTo(stakedFraxAddress, _rewards);
+        
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, _rewards);
+
         vm.prank(defaultGovernance);
         stakedEbtc.donate(_rewards);
 
@@ -276,8 +279,10 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
         mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, _rewards);
+
         /// GIVEN: 600 FRAX is transferred as rewards
-   //     mintFraxTo(stakedFraxAddress, _rewards);
         vm.prank(defaultGovernance);
         stakedEbtc.donate(_rewards);
 
@@ -337,8 +342,10 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         /// GIVEN: timestamp is 400_000 seconds away from the end of the cycle
         mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - _syncDuration);
 
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, _rewards);
+
         /// GIVEN: 600 FRAX is transferred as rewards
-      //  mintFraxTo(stakedFraxAddress, _rewards);
         vm.prank(defaultGovernance);
         stakedEbtc.donate(_rewards);
 

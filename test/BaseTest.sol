@@ -46,6 +46,7 @@ contract BaseTest is Test {
         vm.startPrank(defaultGovernance);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
         governor.setUserRole(defaultGovernance, 12, true);
         vm.stopPrank();
 

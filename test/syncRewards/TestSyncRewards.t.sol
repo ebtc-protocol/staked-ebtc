@@ -44,8 +44,10 @@ contract TestSyncRewards is BaseTest {
             stakedEbtc.__rewardsCycleData().cycleEnd + 1 days
         );
 
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, 50 ether);
+
         /// GIVEN: 50 Frax is transferred to the stakedFrax contract
-        //mintFraxTo(stakedFraxAddress, 50 ether);
         vm.prank(defaultGovernance);
         stakedEbtc.donate(50 ether);
 
@@ -123,9 +125,11 @@ contract TestSyncRewards is BaseTest {
         MineBlocksResult memory _mineBlocksResult = mineBlocksToTimestamp(
             stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - 100
         );
+        
+        // unauthorized donations should have no effect
+        mintEbtcTo(stakedFraxAddress, 50 ether);
 
         /// GIVEN: 50 Frax is transferred to the stakedFrax contract
-//        mintFraxTo(stakedFraxAddress, 50 ether);
         vm.prank(defaultGovernance);
         stakedEbtc.donate(50 ether);
 
