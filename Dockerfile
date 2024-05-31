@@ -7,10 +7,10 @@
 ## docker run -it --rm -v $PWD:/code my/fuzzy
 
 ## Run ECHIDNA with (if you have already ran tests and compilation)
-## cd code && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
+## cd code && solc-select use 0.8.20 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
 ## Run MEDUSA with (if you have already ran tests and compilation)
-## cd code && solc-select use 0.8.17 && medusa fuzz
+## cd code && solc-select use 0.8.20 && medusa fuzz
 
 ## If you've never built the repo
 ## Run ECHIDNA with

@@ -256,15 +256,20 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
         bytes32 _s
     ) external returns (uint256 _shares) {
         uint256 _amount = _approveMax ? type(uint256).max : _assets;
-        asset.permit({
-            owner: msg.sender,
-            spender: address(this),
-            value: _amount,
-            deadline: _deadline,
-            v: _v,
-            r: _r,
-            s: _s
-        });
+        try 
+            asset.permit({
+                owner: msg.sender,
+                spender: address(this),
+                value: _amount,
+                deadline: _deadline,
+                v: _v,
+                r: _r,
+                s: _s
+            }) 
+        { } catch {
+            /// @notice adding try...catch around to mitigate potential permit front-running
+            /// see: https://www.trust-security.xyz/post/permission-denied
+        }
         _shares = (deposit({ _assets: _assets, _receiver: _receiver }));
     }
 

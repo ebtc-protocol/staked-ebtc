@@ -51,6 +51,64 @@ contract TestStakedEbtc is BaseTest {
         assertEq(stakedEbtc.totalBalance() - totalBalanceBefore, 10 ether);
     }
 
+    function testRewardAccrual() public {
+        vm.prank(bob);
+        stakedEbtc.deposit(10 ether, bob);
+
+        vm.prank(defaultGovernance);
+        governor.setUserRole(alice, 12, true);
+
+        vm.prank(alice);
+        stakedEbtc.donate(1 ether);
+        
+        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
+
+        uint256 storedBefore = stakedEbtc.storedTotalAssets();
+
+        stakedEbtc.syncRewardsAndDistribution();
+
+        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() / 2 - 1);
+
+        uint256 rewardAmount = stakedEbtc.previewDistributeRewards();
+
+        assertEq(rewardAmount, 0.5 ether);
+
+        stakedEbtc.syncRewardsAndDistribution();
+
+        assertEq(stakedEbtc.storedTotalAssets(), storedBefore + rewardAmount);
+    }
+
+    function testRewardAccrualAboveMaxDistribution() public {
+        vm.prank(bob);
+        stakedEbtc.deposit(10 ether, bob);
+
+        vm.prank(defaultGovernance);
+        governor.setUserRole(alice, 12, true);
+
+        vm.prank(alice);
+        stakedEbtc.donate(10 ether);
+        
+        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
+
+        uint256 storedBefore = stakedEbtc.storedTotalAssets();
+        uint256 timeBefore = block.timestamp;
+
+        stakedEbtc.syncRewardsAndDistribution();
+
+        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() / 2 - 1);
+
+        uint256 deltaTime = block.timestamp - timeBefore;
+        uint256 maxDistribution = (stakedEbtc.maxDistributionPerSecondPerAsset() * deltaTime * stakedEbtc.storedTotalAssets()) / 1e18;
+
+        uint256 rewardAmount = stakedEbtc.previewDistributeRewards();
+
+        assertEq(rewardAmount, maxDistribution);
+
+        stakedEbtc.syncRewardsAndDistribution();
+
+        assertEq(stakedEbtc.storedTotalAssets(), storedBefore + rewardAmount);
+    }
+
     function testSweepAuth() public {
         vm.prank(bob);
         stakedEbtc.deposit(10 ether, bob);
