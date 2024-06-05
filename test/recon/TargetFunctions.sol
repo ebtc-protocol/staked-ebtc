@@ -147,4 +147,128 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
             t(false, "syncRewardsAndDistribution should not revert");
         }
     }
+
+    function erc4626_roundtrip_invariant_a(uint256 amount) public prepare {
+        amount = between(amount, 1, MAX_EBTC);
+
+        vm.prank(senderAddr);
+        uint256 shares = stakedEbtc.deposit(amount, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedAssets = stakedEbtc.redeem(shares, senderAddr, senderAddr);
+
+        t(redeemedAssets <= amount, "ERC4626_ROUNDTRIP_INVARIANT_A: redeem(deposit(a)) <= a");
+    }
+
+    function erc4626_roundtrip_invariant_b(uint256 amount) public prepare {
+        amount = between(amount, 1, MAX_EBTC);
+
+        vm.prank(senderAddr);
+        uint256 shares = stakedEbtc.deposit(amount, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 withdrawnShares = stakedEbtc.withdraw(amount, senderAddr, senderAddr);
+
+        t(withdrawnShares >= shares, "ERC4626_ROUNDTRIP_INVARIANT_B: s = deposit(a) s' = withdraw(a) s' >= s");
+    }
+
+    function erc4626_roundtrip_invariant_c(uint256 shares) public prepare {
+        shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
+
+        vm.prank(senderAddr);
+        stakedEbtc.mint(shares, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedAssets = stakedEbtc.redeem(shares, senderAddr, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 mintedShares = stakedEbtc.deposit(redeemedAssets, senderAddr);
+
+        /// @dev restore original state to not break invariants
+        vm.prank(senderAddr);
+        stakedEbtc.redeem(mintedShares, senderAddr, senderAddr);
+
+        t(mintedShares <= shares, "ERC4626_ROUNDTRIP_INVARIANT_C: deposit(redeem(s)) <= s");
+    }
+
+    function erc4626_roundtrip_invariant_d(uint256 shares) public prepare {
+        shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
+
+        vm.prank(senderAddr);
+        stakedEbtc.mint(shares, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedAssets = stakedEbtc.redeem(shares, senderAddr, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 depositedAssets = stakedEbtc.mint(shares, senderAddr);
+
+        /// @dev restore original state to not break invariants
+        vm.prank(senderAddr);
+        stakedEbtc.withdraw(depositedAssets, senderAddr, senderAddr);
+
+        t(depositedAssets >= redeemedAssets, "ERC4626_ROUNDTRIP_INVARIANT_D: a = redeem(s) a' = mint(s) a' >= a");
+    }
+
+    function erc4626_roundtrip_invariant_e(uint256 shares) public prepare {
+        shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
+
+        vm.prank(senderAddr);
+        uint256 depositedAssets = stakedEbtc.mint(shares, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 withdrawnShares = stakedEbtc.withdraw(depositedAssets, senderAddr, senderAddr);
+
+        t(withdrawnShares >= shares, "ERC4626_ROUNDTRIP_INVARIANT_E: withdraw(mint(s)) >= s");
+    }
+
+    function erc4626_roundtrip_invariant_f(uint256 shares) public prepare {
+        shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
+
+        vm.prank(senderAddr);
+        uint256 depositedAssets = stakedEbtc.mint(shares, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedAssets = stakedEbtc.redeem(shares, senderAddr, senderAddr);
+
+        t(redeemedAssets <= depositedAssets, "ERC4626_ROUNDTRIP_INVARIANT_F: a = mint(s) a' = redeem(s) a' <= a");
+    }
+
+    function erc4626_roundtrip_invariant_g(uint256 amount) public prepare {
+        amount = between(amount, 1, MAX_EBTC);
+
+        vm.prank(senderAddr);
+        stakedEbtc.deposit(amount, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedShares = stakedEbtc.withdraw(amount, senderAddr, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 depositedAssets = stakedEbtc.mint(redeemedShares, senderAddr);
+
+        /// @dev restore original state to not break invariants
+        vm.prank(senderAddr);
+        stakedEbtc.withdraw(depositedAssets, senderAddr, senderAddr);
+
+        t(depositedAssets >= amount, "ERC4626_ROUNDTRIP_INVARIANT_G: mint(withdraw(a)) >= a");
+    }
+
+    function erc4626_roundtrip_invariant_h(uint256 amount) public prepare {
+        amount = between(amount, 1, MAX_EBTC);
+
+        vm.prank(senderAddr);
+        stakedEbtc.deposit(amount, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 redeemedShares = stakedEbtc.withdraw(amount, senderAddr, senderAddr);
+
+        vm.prank(senderAddr);
+        uint256 mintedShares = stakedEbtc.deposit(amount, senderAddr);
+
+        /// @dev restore original state to not break invariants
+        vm.prank(senderAddr);
+        stakedEbtc.redeem(mintedShares, senderAddr, senderAddr);
+
+        t(mintedShares <= redeemedShares, "ERC4626_ROUNDTRIP_INVARIANT_H: s = withdraw(a) s' = deposit(a) s' <= s");
+    }
 }
