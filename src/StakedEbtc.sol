@@ -53,6 +53,17 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
         address _authorityAddress
     ) LinearRewardsErc4626(ERC20(address(_underlying)), _name, _symbol, _rewardsCycleLength)
     {
+        
+        // See: `setMaxDistributionPerSecondPerAsset`
+        if (_maxDistributionPerSecondPerAsset > type(uint64).max) {
+            _maxDistributionPerSecondPerAsset = type(uint64).max;
+        }
+
+        emit SetMaxDistributionPerSecondPerAsset({
+            oldMax: maxDistributionPerSecondPerAsset,
+            newMax: _maxDistributionPerSecondPerAsset
+        });
+
         maxDistributionPerSecondPerAsset = _maxDistributionPerSecondPerAsset;
         _initializeAuthority(_authorityAddress);
     }
