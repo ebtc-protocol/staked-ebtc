@@ -15,7 +15,6 @@ pragma solidity 0.8.25;
 
 import { ERC20, ERC4626 } from "@solmate/tokens/ERC4626.sol";
 import { SafeCastLib } from "@solmate/utils/SafeCastLib.sol";
-import { AuthNoOwner } from "./Dependencies/AuthNoOwner.sol";
 
 /// @title LinearRewardsErc4626
 /// @notice An ERC4626 Vault implementation with linear rewards
