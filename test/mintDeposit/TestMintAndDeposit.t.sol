@@ -136,6 +136,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
@@ -212,6 +213,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
@@ -287,6 +289,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds
@@ -350,6 +353,7 @@ contract TestMintAndDeposit is BaseTest, StakedFraxFunctions, mintDepositFunctio
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: We wait 100_000 seconds

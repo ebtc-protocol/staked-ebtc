@@ -123,11 +123,13 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         vm.prank(defaultGovernance);
         try stakedEbtc.donate(amount) {
             vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
+            vm.prank(defaultGovernance);
             try stakedEbtc.syncRewardsAndDistribution() {
             } catch {
                 t(false, "call shouldn't fail");
             }
             vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH());
+            vm.prank(defaultGovernance);
             try stakedEbtc.syncRewardsAndDistribution() {
                 __after();
                 t(_after.totalStoredBalance >= _before.totalStoredBalance, "reward accrual should work");
@@ -142,6 +144,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
 
     function sync_rewards_and_distribution_should_never_revert(uint256 ts) public prepare {
         ts = between(ts, 0, 500 * 52 weeks);
+        vm.prank(defaultGovernance);
         try stakedEbtc.syncRewardsAndDistribution() {
         } catch {
             t(false, "syncRewardsAndDistribution should not revert");

@@ -84,6 +84,7 @@ contract TestRedeemAndWithdraw is BaseTest, StakedFraxFunctions, mintDepositFunc
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: bob deposits 1000 FRAX
@@ -173,6 +174,7 @@ contract TestRedeemAndWithdraw is BaseTest, StakedFraxFunctions, mintDepositFunc
         stakedEbtc.donate(_rewards);
 
         /// GIVEN: syncAndDistributeRewards is called
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: bob deposits 1000 FRAX

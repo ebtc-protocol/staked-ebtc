@@ -69,7 +69,7 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
     /// @dev This function can only be called by the timelock, caps the value to type(uint64).max
     /// @param _maxDistributionPerSecondPerAsset The maximum amount of rewards that can be distributed per second per 1e18 asset
     function setMaxDistributionPerSecondPerAsset(uint256 _maxDistributionPerSecondPerAsset) external requiresAuth {
-        syncRewardsAndDistribution();
+        _syncRewardsAndDistribution();
 
         // NOTE: prevents bricking the contract via overflow
         if (_maxDistributionPerSecondPerAsset > type(uint64).max) {
@@ -82,6 +82,11 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
         });
 
         maxDistributionPerSecondPerAsset = _maxDistributionPerSecondPerAsset;
+    }
+
+    /// @notice The ```syncRewardsAndDistribution``` function is used to update the rewards cycle data and distribute rewards
+    function syncRewardsAndDistribution() external requiresAuth {
+        _syncRewardsAndDistribution();
     }
 
     /// @notice The ```calculateRewardsToDistribute``` function calculates the amount of rewards to distribute based on the rewards cycle data and the time passed

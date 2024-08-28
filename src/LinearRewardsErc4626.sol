@@ -15,6 +15,7 @@ pragma solidity 0.8.25;
 
 import { ERC20, ERC4626 } from "@solmate/tokens/ERC4626.sol";
 import { SafeCastLib } from "@solmate/utils/SafeCastLib.sol";
+import { AuthNoOwner } from "./Dependencies/AuthNoOwner.sol";
 
 /// @title LinearRewardsErc4626
 /// @notice An ERC4626 Vault implementation with linear rewards
@@ -174,7 +175,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
 
     /// @notice The ```syncRewardsAndDistribution``` function is used to update the rewards cycle data and distribute rewards
     /// @dev rewards must be distributed before the cycle is synced
-    function syncRewardsAndDistribution() public virtual {
+    function _syncRewardsAndDistribution() internal virtual {
         _distributeRewards();
         _syncRewards();
     }
@@ -197,7 +198,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _receiver The address to send the shares to
     /// @return _shares The amount of shares minted
     function deposit(uint256 _assets, address _receiver) public override returns (uint256 _shares) {
-        syncRewardsAndDistribution();
+        _syncRewardsAndDistribution();
         _shares = super.deposit({ assets: _assets, receiver: _receiver });
     }
 
@@ -206,7 +207,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _receiver The address to send the shares to
     /// @return _assets The amount of underlying deposited
     function mint(uint256 _shares, address _receiver) public override returns (uint256 _assets) {
-        syncRewardsAndDistribution();
+        _syncRewardsAndDistribution();
         _assets = super.mint({ shares: _shares, receiver: _receiver });
     }
 
@@ -221,7 +222,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _owner The address of the owner of the shares
     /// @return _shares The amount of shares burned
     function withdraw(uint256 _assets, address _receiver, address _owner) public override returns (uint256 _shares) {
-        syncRewardsAndDistribution();
+        _syncRewardsAndDistribution();
 
         _shares = super.withdraw({ assets: _assets, receiver: _receiver, owner: _owner });
     }
@@ -232,7 +233,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _owner The address of the owner of the shares
     /// @return _assets The amount of underlying redeemed
     function redeem(uint256 _shares, address _receiver, address _owner) public override returns (uint256 _assets) {
-        syncRewardsAndDistribution();
+        _syncRewardsAndDistribution();
 
         _assets = super.redeem({ shares: _shares, receiver: _receiver, owner: _owner });
     }

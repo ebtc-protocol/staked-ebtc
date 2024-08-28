@@ -65,6 +65,7 @@ contract TestStakedEbtc is BaseTest {
 
         uint256 storedBefore = stakedEbtc.storedTotalAssets();
 
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() / 2 - 1);
@@ -73,6 +74,7 @@ contract TestStakedEbtc is BaseTest {
 
         assertEq(rewardAmount, 0.5 ether);
 
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         assertEq(stakedEbtc.storedTotalAssets(), storedBefore + rewardAmount);
@@ -93,6 +95,7 @@ contract TestStakedEbtc is BaseTest {
         uint256 storedBefore = stakedEbtc.storedTotalAssets();
         uint256 timeBefore = block.timestamp;
 
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() / 2 - 1);
@@ -104,6 +107,7 @@ contract TestStakedEbtc is BaseTest {
 
         assertEq(rewardAmount, maxDistribution);
 
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         assertEq(stakedEbtc.storedTotalAssets(), storedBefore + rewardAmount);

@@ -57,7 +57,8 @@ contract TestSyncRewards is BaseTest {
 
         StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
-        /// WHEN: anyone calls syncRewardsAndDistribution()
+        /// WHEN: only authorized callers can call syncRewardsAndDistribution()
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
@@ -119,6 +120,7 @@ contract TestSyncRewards is BaseTest {
         //==============================================================================
         /// GIVEN: we are 1 day past the end of the old cycle and we sync rewards
         mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + 1 days);
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: The current timestamp is rewardsCycleLength - 100 seconds past cycle end (i.e. 100 seconds before the NEXT cycle ends and sync has not been called)
@@ -139,7 +141,8 @@ contract TestSyncRewards is BaseTest {
 
         StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
-        /// WHEN: anyone calls syncRewardsAndDistribution()
+        /// WHEN: only authorized callers can call syncRewardsAndDistribution()
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
@@ -204,6 +207,7 @@ contract TestSyncRewards is BaseTest {
 
         /// GIVEN: we are 1 day past the end of the old cycle and we sync rewards
         mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + 1 days);
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: The current timestamp is rewardsCycleLength - 1000.  i.e. cycle has not ended
@@ -215,7 +219,8 @@ contract TestSyncRewards is BaseTest {
 
         StakedFraxStorageSnapshot memory _initial_stakedFraxStorageSnapshot = stakedFraxStorageSnapshot(stakedEbtc);
 
-        /// WHEN: anyone calls syncRewardsAndDistribution()
+        /// WHEN: only authorized callers can call syncRewardsAndDistribution()
+        vm.prank(defaultGovernance);
         stakedEbtc.syncRewardsAndDistribution();
 
         DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
