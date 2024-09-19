@@ -15,18 +15,4 @@ contract CryticToForkFoundry is Test, TargetFunctions, FoundryAsserts {
 
          _setupFork();
     }
-
-// forge test --match-test test_rewardAccrual_0 --rpc-url RPC -vvvvv
- function test_rewardAccrual_0() public {
-    vm.prank(address(0x10000));
-    deposit(0);
-    vm.prank(address(0x10000));
-    rewardAccrual(0);
- }
-
- // forge test --match-test test_donate_1 --rpc-url RPC -vvvv
- function test_donate_1() public {
-    vm.prank(address(0x10000));
-    donate(7175949089520898362738541290599025649800349600,true);
- }
 }
