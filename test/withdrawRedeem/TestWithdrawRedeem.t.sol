@@ -2,10 +2,8 @@
 pragma solidity ^0.8.25;
 
 import "../BaseTest.sol";
-import {
-    StakedFraxFunctions
-} from "../setMaxDistributionPerSecondPerAsset/TestSetMaxDistributionPerSecondPerAsset.t.sol";
-import { mintDepositFunctions } from "../mintDeposit/TestMintAndDeposit.t.sol";
+import {StakedFraxFunctions} from "../setMaxDistributionPerSecondPerAsset/TestSetMaxDistributionPerSecondPerAsset.t.sol";
+import {mintDepositFunctions} from "../mintDeposit/TestMintAndDeposit.t.sol";
 
 abstract contract RedeemWithdrawFunctions is BaseTest {
     function _stakedFrax_redeem(uint256 _shares, address _recipient) internal {
@@ -79,7 +77,7 @@ contract TestRedeemAndWithdraw is BaseTest, StakedFraxFunctions, mintDepositFunc
 
         /// GIVEN: 600 FRAX is transferred as rewards
         uint256 _rewards = 600 ether;
-     //   mintFraxTo(stakedFraxAddress, _rewards);
+        //   mintFraxTo(stakedFraxAddress, _rewards);
         vm.prank(defaultGovernance);
         stakedEbtc.donate(_rewards);
 
@@ -105,13 +103,11 @@ contract TestRedeemAndWithdraw is BaseTest, StakedFraxFunctions, mintDepositFunc
         uint256 _shares = stakedEbtc.balanceOf(bob);
         _stakedFrax_redeem(_shares, bob);
 
-        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
-        DeltaUserStorageSnapshot memory _delta_bobStorageSnapshot = deltaUserStorageSnapshot(
-            _initial_bobStorageSnapshot
-        );
+        DeltaUserStorageSnapshot memory _delta_bobStorageSnapshot =
+            deltaUserStorageSnapshot(_initial_bobStorageSnapshot);
 
         //==============================================================================
         // Assert
@@ -193,13 +189,11 @@ contract TestRedeemAndWithdraw is BaseTest, StakedFraxFunctions, mintDepositFunc
         /// WHEN: bob withdraws 1000 frax
         _stakedFrax_withdraw(1000 ether, bob);
 
-        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
-        DeltaUserStorageSnapshot memory _delta_bobStorageSnapshot = deltaUserStorageSnapshot(
-            _initial_bobStorageSnapshot
-        );
+        DeltaUserStorageSnapshot memory _delta_bobStorageSnapshot =
+            deltaUserStorageSnapshot(_initial_bobStorageSnapshot);
 
         //==============================================================================
         // Assert

@@ -40,9 +40,8 @@ contract TestSyncRewards is BaseTest {
         // Arrange
         //==============================================================================
         /// GIVEN: we are 1 day past the end of the old cycle
-        MineBlocksResult memory _minBlocksResult = mineBlocksToTimestamp(
-            stakedEbtc.__rewardsCycleData().cycleEnd + 1 days
-        );
+        MineBlocksResult memory _minBlocksResult =
+            mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + 1 days);
 
         // unauthorized donations should have no effect
         mintEbtcTo(stakedFraxAddress, 50 ether);
@@ -60,9 +59,8 @@ contract TestSyncRewards is BaseTest {
         /// WHEN: anyone calls syncRewardsAndDistribution()
         stakedEbtc.syncRewardsAndDistribution();
 
-        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
         //==============================================================================
         // Assert
@@ -122,10 +120,9 @@ contract TestSyncRewards is BaseTest {
         stakedEbtc.syncRewardsAndDistribution();
 
         /// GIVEN: The current timestamp is rewardsCycleLength - 100 seconds past cycle end (i.e. 100 seconds before the NEXT cycle ends and sync has not been called)
-        MineBlocksResult memory _mineBlocksResult = mineBlocksToTimestamp(
-            stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - 100
-        );
-        
+        MineBlocksResult memory _mineBlocksResult =
+            mineBlocksToTimestamp(stakedEbtc.__rewardsCycleData().cycleEnd + rewardsCycleLength - 100);
+
         // unauthorized donations should have no effect
         mintEbtcTo(stakedFraxAddress, 50 ether);
 
@@ -142,9 +139,8 @@ contract TestSyncRewards is BaseTest {
         /// WHEN: anyone calls syncRewardsAndDistribution()
         stakedEbtc.syncRewardsAndDistribution();
 
-        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
         //==============================================================================
         // Assert
@@ -218,9 +214,8 @@ contract TestSyncRewards is BaseTest {
         /// WHEN: anyone calls syncRewardsAndDistribution()
         stakedEbtc.syncRewardsAndDistribution();
 
-        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _first_deltaStakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
         //==============================================================================
         // Assert

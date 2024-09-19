@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.25;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeCastLib } from "@solmate/utils/SafeCastLib.sol";
-import { SafeTransferLib } from "@solmate/utils/SafeTransferLib.sol";
-import { LinearRewardsErc4626, ERC20 } from "./LinearRewardsErc4626.sol";
-import { AuthNoOwner } from "./Dependencies/AuthNoOwner.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeCastLib} from "@solmate/utils/SafeCastLib.sol";
+import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
+import {LinearRewardsErc4626, ERC20} from "./LinearRewardsErc4626.sol";
+import {AuthNoOwner} from "./Dependencies/AuthNoOwner.sol";
 
 /// @title Staked eBTC
 /// @notice A ERC4626 Vault implementation with linear rewards, rewards can be capped
@@ -38,7 +38,7 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
             ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)));
         }
     }
-    
+
     /// @param _underlying The erc20 asset deposited
     /// @param _name The name of the vault
     /// @param _symbol The symbol of the vault
@@ -94,14 +94,14 @@ contract StakedEbtc is LinearRewardsErc4626, AuthNoOwner {
     /// @param _rewardsCycleData The rewards cycle data
     /// @param _deltaTime The time passed since the last rewards distribution
     /// @return _rewardToDistribute The amount of rewards to distribute
-    function calculateRewardsToDistribute(
-        RewardsCycleData memory _rewardsCycleData,
-        uint256 _deltaTime
-    ) public view override returns (uint256 _rewardToDistribute) {
-        _rewardToDistribute = super.calculateRewardsToDistribute({
-            _rewardsCycleData: _rewardsCycleData,
-            _deltaTime: _deltaTime
-        });
+    function calculateRewardsToDistribute(RewardsCycleData memory _rewardsCycleData, uint256 _deltaTime)
+        public
+        view
+        override
+        returns (uint256 _rewardToDistribute)
+    {
+        _rewardToDistribute =
+            super.calculateRewardsToDistribute({_rewardsCycleData: _rewardsCycleData, _deltaTime: _deltaTime});
 
         // Cap rewards
         uint256 _maxDistribution = (maxDistributionPerSecondPerAsset * _deltaTime * storedTotalAssets) / PRECISION;
