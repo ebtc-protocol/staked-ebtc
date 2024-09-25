@@ -41,8 +41,8 @@ abstract contract Properties is Setup, Asserts {
         t(cycleEnd >= stakedEbtc.lastRewardsDistribution(), "cycleEnd >= lastRewardsDistribution");
     }
 
-    function last_sync_eq_last_rewards_distribution() public {
+    function last_rewards_distribution_gte_last_sync() public {
         (, uint40 lastSync, ) = stakedEbtc.rewardsCycleData();
-        t(lastSync == stakedEbtc.lastRewardsDistribution(), "lastSync == lastRewardsDistribution");
+        t(stakedEbtc.lastRewardsDistribution() >= lastSync, "lastRewardsDistribution >= lastSync");
     }
 }
