@@ -35,4 +35,14 @@ abstract contract Properties is Setup, Asserts {
             t(false, "sumOfUserAssets shouldn't be greater than totalAssets");
         }
     }
+
+    function cycle_end_gte_last_rewards_distribution() public {
+        (uint40 cycleEnd, , ) = stakedEbtc.rewardsCycleData();
+        t(cycleEnd >= stakedEbtc.lastRewardsDistribution(), "cycleEnd >= lastRewardsDistribution");
+    }
+
+    function last_sync_eq_last_rewards_distribution() public {
+        (, uint40 lastSync, ) = stakedEbtc.rewardsCycleData();
+        t(lastSync == stakedEbtc.lastRewardsDistribution(), "lastSync == lastRewardsDistribution");
+    }
 }
