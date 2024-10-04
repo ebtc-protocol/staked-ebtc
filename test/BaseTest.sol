@@ -25,9 +25,11 @@ contract BaseTest is Test {
     ERC20Mock public mockEbtc;
     address internal defaultGovernance;
     Governor internal governor;
+    address internal defaultFeeRecipient;
 
     function setUp() public virtual {
         defaultGovernance = vm.addr(0x123456);
+        defaultFeeRecipient = vm.addr(0x234567);
         governor = new Governor(defaultGovernance);
         mockEbtc = new ERC20Mock();
 
@@ -39,7 +41,8 @@ contract BaseTest is Test {
             _symbol: "stEbtc",
             _rewardsCycleLength: 7 days,
             _maxDistributionPerSecondPerAsset: TEN_PERCENT,
-            _authorityAddress: address(governor)
+            _authorityAddress: address(governor),
+            _feeRecipient: defaultFeeRecipient
         });
         stakedFraxAddress = address(stakedEbtc);
 
@@ -48,6 +51,7 @@ contract BaseTest is Test {
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMinRewardsPerPeriod.selector, true);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMintingFee.selector, true);
         governor.setUserRole(defaultGovernance, 12, true);
         vm.stopPrank();
 

@@ -21,12 +21,14 @@ abstract contract Setup is BaseSetup {
     StakedEbtc internal stakedEbtc;
     MockERC20 internal mockEbtc;
     address internal defaultGovernance;
+    address internal defaultFeeRecipient;
     Governor internal governor;
     address[] internal senders;
     address initialDepositor;
 
     function setup() internal virtual override {
         defaultGovernance = vm.addr(0x123456);
+        defaultFeeRecipient = vm.addr(0x234567);
         governor = new Governor(defaultGovernance);
         mockEbtc = new MockERC20("eBTC", "eBTC");
 
@@ -38,7 +40,8 @@ abstract contract Setup is BaseSetup {
             _symbol: "stEbtc",
             _rewardsCycleLength: 7 days,
             _maxDistributionPerSecondPerAsset: TEN_PERCENT,
-            _authorityAddress: address(governor)
+            _authorityAddress: address(governor),
+            _feeRecipient: defaultFeeRecipient
         });
 
         vm.prank(defaultGovernance);
@@ -49,6 +52,12 @@ abstract contract Setup is BaseSetup {
 
         vm.prank(defaultGovernance);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
+
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMinRewardsPerPeriod.selector, true);
+
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMintingFee.selector, true);
 
         vm.prank(defaultGovernance);
         governor.setUserRole(defaultGovernance, 12, true);
