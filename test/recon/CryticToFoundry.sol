@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.25;
 
@@ -25,7 +24,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function testSumOfAssets() public {
-
         setSenderAddr(address(0x20000));
         deposit(115792089237316195423570985008687907853269984665640564039457584007907629891202);
 
@@ -37,7 +35,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         setSenderAddr(address(0x20000));
         redeem(97);
 
-        sum_of_user_assets_equals_total_assets();    
+        sum_of_user_assets_equals_total_assets();
     }
 
     function testRedeemBroken() public {
@@ -54,26 +52,26 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         redeem(115792089237316195423570985008687907853269984665640564038157584007913129640436);
     }
 
-    function test_erc4626_roundtrip_invariant_g_0() public {    
+    function test_erc4626_roundtrip_invariant_g_0() public {
         vm.roll(3004);
         vm.warp(148624);
         vm.prank(0x0000000000000000000000000000000000010000);
         deposit(12544);
-        
+
         vm.roll(34391);
         vm.warp(431534);
         vm.prank(0x0000000000000000000000000000000000010000);
         rewardAccrual(1143187891282894459216654264527943167721948170762202453974184122553535599440);
-        
+
         vm.roll(34584);
         vm.warp(432534);
         vm.prank(0x0000000000000000000000000000000000010000);
         redeem(56164884713939694059920037084599102845166771396506689451114067542464279432113);
-        
+
         vm.roll(64663);
         vm.warp(648001);
         vm.prank(0x0000000000000000000000000000000000020000);
-        redeem(61847903950205624519929759118702430785146852664522385223125300218711571934976); 
+        redeem(61847903950205624519929759118702430785146852664522385223125300218711571934976);
 
         vm.roll(71549);
         vm.warp(1008554);

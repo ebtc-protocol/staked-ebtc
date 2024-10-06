@@ -34,9 +34,7 @@ abstract contract Auth {
 
         // Checking if the caller is the owner only after calling the authority saves gas in most cases, but be
         // aware that this makes protected functions uncallable even to the owner if the authority is out of order.
-        return
-            (address(auth) != address(0) && auth.canCall(user, address(this), functionSig)) ||
-            user == owner;
+        return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig)) || user == owner;
     }
 
     function setAuthority(Authority newAuthority) public virtual {

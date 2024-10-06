@@ -13,12 +13,7 @@ interface IRolesAuthority {
     event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
     event CapabilityBurned(address indexed target, bytes4 indexed functionSig);
 
-    event RoleCapabilityUpdated(
-        uint8 indexed role,
-        address indexed target,
-        bytes4 indexed functionSig,
-        bool enabled
-    );
+    event RoleCapabilityUpdated(uint8 indexed role, address indexed target, bytes4 indexed functionSig, bool enabled);
 
     enum CapabilityFlag {
         None,

@@ -16,5 +16,5 @@ docs/
 # medusa output
 medusa/
 crytic-export/
-
+echidna/
 temp/

@@ -3,11 +3,11 @@ pragma solidity ^0.8.25;
 
 import "forge-std/Test.sol";
 import "forge-std/StdMath.sol";
-import { StakedEbtc } from "../src/StakedEbtc.sol";
-import { Governor } from "../src/Dependencies/Governor.sol";
-import { StakedEbtcStructHelper } from "./helpers/StakedEbtcStructHelper.sol";
-import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Mock } from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {StakedEbtc} from "../src/StakedEbtc.sol";
+import {Governor} from "../src/Dependencies/Governor.sol";
+import {StakedEbtcStructHelper} from "./helpers/StakedEbtcStructHelper.sol";
+import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract BaseTest is Test {
     using StakedEbtcStructHelper for *;
@@ -44,7 +44,9 @@ contract BaseTest is Test {
         stakedFraxAddress = address(stakedEbtc);
 
         vm.startPrank(defaultGovernance);
-        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
+        governor.setRoleCapability(
+            12, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true
+        );
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
         governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMinRewardsPerPeriod.selector, true);
@@ -137,22 +139,20 @@ function calculateDeltaStakedFraxStorage(
     StakedFraxStorageSnapshot memory _initial,
     StakedFraxStorageSnapshot memory _final
 ) pure returns (StakedFraxStorageSnapshot memory _delta) {
-    _delta.stakedFraxAddress = _initial.stakedFraxAddress == _final.stakedFraxAddress
-        ? address(0)
-        : _final.stakedFraxAddress;
-    _delta.maxDistributionPerSecondPerAsset = stdMath.delta(
-        _initial.maxDistributionPerSecondPerAsset,
-        _final.maxDistributionPerSecondPerAsset
-    );
+    _delta.stakedFraxAddress =
+        _initial.stakedFraxAddress == _final.stakedFraxAddress ? address(0) : _final.stakedFraxAddress;
+    _delta.maxDistributionPerSecondPerAsset =
+        stdMath.delta(_initial.maxDistributionPerSecondPerAsset, _final.maxDistributionPerSecondPerAsset);
     _delta.rewardsCycleData = calculateDeltaRewardsCycleData(_initial.rewardsCycleData, _final.rewardsCycleData);
     _delta.lastRewardsDistribution = stdMath.delta(_initial.lastRewardsDistribution, _final.lastRewardsDistribution);
     _delta.storedTotalAssets = stdMath.delta(_initial.storedTotalAssets, _final.storedTotalAssets);
     _delta.totalSupply = stdMath.delta(_initial.totalSupply, _final.totalSupply);
 }
 
-function deltaStakedFraxStorageSnapshot(
-    StakedFraxStorageSnapshot memory _initial
-) view returns (DeltaStakedFraxStorageSnapshot memory _final) {
+function deltaStakedFraxStorageSnapshot(StakedFraxStorageSnapshot memory _initial)
+    view
+    returns (DeltaStakedFraxStorageSnapshot memory _final)
+{
     _final.start = _initial;
     _final.end = stakedFraxStorageSnapshot(StakedEbtc(_initial.stakedFraxAddress));
     _final.delta = calculateDeltaStakedFraxStorage(_final.start, _final.end);
@@ -187,10 +187,10 @@ struct DeltaUserStorageSnapshot {
     UserStorageSnapshot delta;
 }
 
-function userStorageSnapshot(
-    address _user,
-    StakedEbtc _stakedFrax
-) view returns (UserStorageSnapshot memory _snapshot) {
+function userStorageSnapshot(address _user, StakedEbtc _stakedFrax)
+    view
+    returns (UserStorageSnapshot memory _snapshot)
+{
     _snapshot.user = _user;
     _snapshot.stakedFraxAddress = address(_stakedFrax);
     _snapshot.balance = _user.balance;
@@ -198,22 +198,22 @@ function userStorageSnapshot(
     _snapshot.asset.balanceOf = IERC20(address(_stakedFrax.asset())).balanceOf(_user);
 }
 
-function calculateDeltaUserStorageSnapshot(
-    UserStorageSnapshot memory _initial,
-    UserStorageSnapshot memory _final
-) pure returns (UserStorageSnapshot memory _delta) {
+function calculateDeltaUserStorageSnapshot(UserStorageSnapshot memory _initial, UserStorageSnapshot memory _final)
+    pure
+    returns (UserStorageSnapshot memory _delta)
+{
     _delta.user = _initial.user == _final.user ? address(0) : _final.user;
-    _delta.stakedFraxAddress = _initial.stakedFraxAddress == _final.stakedFraxAddress
-        ? address(0)
-        : _final.stakedFraxAddress;
+    _delta.stakedFraxAddress =
+        _initial.stakedFraxAddress == _final.stakedFraxAddress ? address(0) : _final.stakedFraxAddress;
     _delta.balance = stdMath.delta(_initial.balance, _final.balance);
     _delta.stakedFrax = calculateDeltaErc20UserStorageSnapshot(_initial.stakedFrax, _final.stakedFrax);
     _delta.asset = calculateDeltaErc20UserStorageSnapshot(_initial.asset, _final.asset);
 }
 
-function deltaUserStorageSnapshot(
-    UserStorageSnapshot memory _initial
-) view returns (DeltaUserStorageSnapshot memory _snapshot) {
+function deltaUserStorageSnapshot(UserStorageSnapshot memory _initial)
+    view
+    returns (DeltaUserStorageSnapshot memory _snapshot)
+{
     _snapshot.start = _initial;
     _snapshot.end = userStorageSnapshot(_initial.user, StakedEbtc(_initial.stakedFraxAddress));
     _snapshot.delta = calculateDeltaUserStorageSnapshot(_snapshot.start, _snapshot.end);

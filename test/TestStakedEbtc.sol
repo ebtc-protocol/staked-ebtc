@@ -4,7 +4,6 @@ pragma solidity ^0.8.25;
 import "./BaseTest.sol";
 
 contract TestStakedEbtc is BaseTest {
-
     address bob;
     address alice;
     address donald;
@@ -44,7 +43,7 @@ contract TestStakedEbtc is BaseTest {
         governor.setUserRole(alice, 12, true);
 
         uint256 totalBalanceBefore = stakedEbtc.totalBalance();
-        
+
         vm.prank(alice);
         stakedEbtc.donate(10 ether);
 
@@ -60,7 +59,7 @@ contract TestStakedEbtc is BaseTest {
 
         vm.prank(alice);
         stakedEbtc.donate(1 ether);
-        
+
         vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
 
         uint256 storedBefore = stakedEbtc.storedTotalAssets();
@@ -87,7 +86,7 @@ contract TestStakedEbtc is BaseTest {
 
         vm.prank(alice);
         stakedEbtc.donate(10 ether);
-        
+
         vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
 
         uint256 storedBefore = stakedEbtc.storedTotalAssets();
@@ -98,7 +97,8 @@ contract TestStakedEbtc is BaseTest {
         vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() / 2 - 1);
 
         uint256 deltaTime = block.timestamp - timeBefore;
-        uint256 maxDistribution = (stakedEbtc.maxDistributionPerSecondPerAsset() * deltaTime * stakedEbtc.storedTotalAssets()) / 1e18;
+        uint256 maxDistribution =
+            (stakedEbtc.maxDistributionPerSecondPerAsset() * deltaTime * stakedEbtc.storedTotalAssets()) / 1e18;
 
         uint256 rewardAmount = stakedEbtc.previewDistributeRewards();
 
@@ -220,7 +220,7 @@ contract TestStakedEbtc is BaseTest {
 
         uint256 bobShares = stakedEbtc.balanceOf(bob);
         uint256 bobBefore = mockEbtc.balanceOf(bob);
-        
+
         console.log("==== redeem (all) ===");
 
         vm.prank(bob);
@@ -233,7 +233,7 @@ contract TestStakedEbtc is BaseTest {
         console.log("bobBefore", bobBefore);
         console.log("bobAfter", bobAfter);
         console.log("bobDiff", bobAfter - bobBefore);
-    
+
         console.log("==== deposit ===");
 
         vm.prank(bob);

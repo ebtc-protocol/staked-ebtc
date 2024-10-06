@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.25;
 
@@ -7,6 +6,7 @@ import {BeforeAfter} from "./BeforeAfter.sol";
 import {Properties} from "./Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 import "forge-std/console2.sol";
+import {MockERC20} from "./MockERC20.sol";
 
 abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfter {
     uint256 public constant MAX_EBTC = 1e27;
@@ -44,7 +44,11 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
     function deposit(uint256 amount) public prepare {
         amount = between(amount, 1, MAX_EBTC);
 
-        mockEbtc.mint(senderAddr, amount);
+        if (!isEchidnaFork) {
+            mockEbtc.mint(senderAddr, amount);
+        } else {
+            amount = between(amount, 0, mockEbtc.balanceOf(senderAddr));
+        }
 
         vm.prank(senderAddr);
         mockEbtc.approve(address(stakedEbtc), type(uint256).max);
@@ -81,7 +85,11 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
     function donate(uint256 amount, bool authorized) public prepare {
         amount = between(amount, 1, MAX_EBTC);
 
-        mockEbtc.mint(defaultGovernance, amount);
+        if (!isEchidnaFork) {
+            mockEbtc.mint(defaultGovernance, amount);
+        } else {
+            amount = between(amount, 0, mockEbtc.balanceOf(defaultGovernance));
+        }
 
         __before();
 
@@ -98,18 +106,28 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         } else {
             vm.prank(defaultGovernance);
             mockEbtc.transfer(address(stakedEbtc), amount);
-            
+
             __after();
 
             _checkPpfs();
-            t(_after.totalBalance == _before.totalBalance, "totalBalance should not go up after an unauthorized donation");
+            t(
+                _after.totalBalance == _before.totalBalance,
+                "totalBalance should not go up after an unauthorized donation"
+            );
         }
     }
 
     function sweep(uint256 amount) public prepare {
         amount = between(amount, 1, MAX_EBTC);
 
-        mockEbtc.mint(address(stakedEbtc), amount);
+        if (!isEchidnaFork) {
+            mockEbtc.mint(address(stakedEbtc), amount);
+        } else {
+            vm.prank(defaultGovernance);
+            amount = between(amount, 0, mockEbtc.balanceOf(defaultGovernance));
+            vm.prank(defaultGovernance);
+            mockEbtc.transfer(address(stakedEbtc), amount);
+        }
 
         __before();
 
@@ -124,6 +142,27 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         }
     }
 
+    function sweep_other(uint256 amount) public prepare {
+        // MINT A TOKEN
+        MockERC20 otherToken = new MockERC20("mock", "MOCK");
+
+        otherToken.mint(address(stakedEbtc), amount);
+
+        __before();
+
+        uint256 balB4 = otherToken.balanceOf(defaultGovernance);
+
+        vm.prank(defaultGovernance);
+        try stakedEbtc.sweep(address(otherToken)) {}
+        catch {
+            t(false, "call shouldn't fail");
+        }
+
+        uint256 balAfter = otherToken.balanceOf(defaultGovernance);
+
+        t(balAfter - balB4 == amount, "Sweep of other token");
+    }
+
     function rewardAccrual(uint256 amount) public prepare {
         amount = between(amount, 1, 1000e18);
 
@@ -132,13 +171,17 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         // reward distribution doesn't work with no deposits
         require(_before.totalStoredBalance > 0);
 
-        mockEbtc.mint(defaultGovernance, amount);
+        if (!isEchidnaFork) {
+            mockEbtc.mint(defaultGovernance, amount);
+        } else {
+            amount = between(amount, 0, mockEbtc.balanceOf(defaultGovernance));
+        }
 
         vm.prank(defaultGovernance);
         try stakedEbtc.donate(amount) {
             vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
-            try stakedEbtc.syncRewardsAndDistribution() {
-            } catch {
+            try stakedEbtc.syncRewardsAndDistribution() {}
+            catch {
                 t(false, "call shouldn't fail");
             }
             vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH());
@@ -162,8 +205,8 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
 
     function sync_rewards_and_distribution_should_never_revert(uint256 ts) public prepare {
         ts = between(ts, 0, 500 * 52 weeks);
-        try stakedEbtc.syncRewardsAndDistribution() {
-        } catch {
+        try stakedEbtc.syncRewardsAndDistribution() {}
+        catch {
             t(false, "syncRewardsAndDistribution should not revert");
         }
     }
@@ -218,13 +261,11 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
     function erc4626_roundtrip_invariant_d(uint256 shares) public prepare {
         shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
 
-        vm.prank(senderAddr);
         stakedEbtc.mint(shares, senderAddr);
 
         vm.prank(senderAddr);
         uint256 redeemedAssets = stakedEbtc.redeem(shares, senderAddr, senderAddr);
 
-        vm.prank(senderAddr);
         stakedEbtc.mint(shares, senderAddr);
 
         uint256 depositedAssets = stakedEbtc.convertToAssets(shares);
@@ -254,6 +295,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         shares = between(shares, 1, stakedEbtc.convertToShares(MAX_EBTC));
 
         vm.prank(senderAddr);
+
         stakedEbtc.mint(shares, senderAddr);
 
         uint256 depositedAssets = stakedEbtc.convertToAssets(shares);

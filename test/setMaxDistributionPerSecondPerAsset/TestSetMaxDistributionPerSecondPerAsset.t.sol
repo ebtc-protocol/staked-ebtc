@@ -26,9 +26,8 @@ contract TestSetMaxDistributionPerSecondPerAsset is BaseTest, StakedFraxFunction
         /// WHEN: governance sets maxDistributionPerSecondPerAsset to uint64.max + 1
         _stakedFrax_setMaxDistributionPerSecondPerAsset(uint256(type(uint64).max) + 1);
 
-        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
         /// THEN: values should be equal to uint64.max
         assertEq(
@@ -44,9 +43,8 @@ contract TestSetMaxDistributionPerSecondPerAsset is BaseTest, StakedFraxFunction
         /// WHEN: governance sets maxDistributionPerSecondPerAsset to 1 ether
         _stakedFrax_setMaxDistributionPerSecondPerAsset(1 ether);
 
-        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot = deltaStakedFraxStorageSnapshot(
-            _initial_stakedFraxStorageSnapshot
-        );
+        DeltaStakedFraxStorageSnapshot memory _delta_stakedFraxStorageSnapshot =
+            deltaStakedFraxStorageSnapshot(_initial_stakedFraxStorageSnapshot);
 
         /// THEN: maxDistributionPerSecondPerAsset should be 1 ether
         assertEq(

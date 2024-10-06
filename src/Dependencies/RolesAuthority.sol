@@ -39,11 +39,12 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
         return (uint256(getUserRoles[user]) >> role) & 1 != 0;
     }
 
-    function doesRoleHaveCapability(
-        uint8 role,
-        address target,
-        bytes4 functionSig
-    ) public view virtual returns (bool) {
+    function doesRoleHaveCapability(uint8 role, address target, bytes4 functionSig)
+        public
+        view
+        virtual
+        returns (bool)
+    {
         return (uint256(getRolesWithCapability[target][functionSig]) >> role) & 1 != 0;
     }
 
@@ -56,15 +57,11 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
     //////////////////////////////////////////////////////////////*/
 
     /**
-        @notice A user can call a given function signature on a given target address if:
-            - The capability has not been burned
-            - That capability is public, or the user has a role that has been granted the capability to call the function
+     * @notice A user can call a given function signature on a given target address if:
+     *         - The capability has not been burned
+     *         - That capability is public, or the user has a role that has been granted the capability to call the function
      */
-    function canCall(
-        address user,
-        address target,
-        bytes4 functionSig
-    ) public view virtual override returns (bool) {
+    function canCall(address user, address target, bytes4 functionSig) public view virtual override returns (bool) {
         CapabilityFlag flag = capabilityFlag[target][functionSig];
 
         if (flag == CapabilityFlag.Burned) {
@@ -82,15 +79,8 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
 
     /// @notice Set a capability flag as public, meaning any account can call it. Or revoke this capability.
     /// @dev A capability cannot be made public if it has been burned.
-    function setPublicCapability(
-        address target,
-        bytes4 functionSig,
-        bool enabled
-    ) public virtual requiresAuth {
-        require(
-            capabilityFlag[target][functionSig] != CapabilityFlag.Burned,
-            "RolesAuthority: Capability Burned"
-        );
+    function setPublicCapability(address target, bytes4 functionSig, bool enabled) public virtual requiresAuth {
+        require(capabilityFlag[target][functionSig] != CapabilityFlag.Burned, "RolesAuthority: Capability Burned");
 
         if (enabled) {
             capabilityFlag[target][functionSig] = CapabilityFlag.Public;
@@ -103,12 +93,11 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
 
     /// @notice Grant a specified role the ability to call a function on a target.
     /// @notice Has no effect
-    function setRoleCapability(
-        uint8 role,
-        address target,
-        bytes4 functionSig,
-        bool enabled
-    ) public virtual requiresAuth {
+    function setRoleCapability(uint8 role, address target, bytes4 functionSig, bool enabled)
+        public
+        virtual
+        requiresAuth
+    {
         if (enabled) {
             getRolesWithCapability[target][functionSig] |= bytes32(1 << role);
             enabledFunctionSigsByTarget[target].add(bytes32(functionSig));
@@ -135,10 +124,7 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
 
     /// @notice Permanently burns a capability for a target.
     function burnCapability(address target, bytes4 functionSig) public virtual requiresAuth {
-        require(
-            capabilityFlag[target][functionSig] != CapabilityFlag.Burned,
-            "RolesAuthority: Capability Burned"
-        );
+        require(capabilityFlag[target][functionSig] != CapabilityFlag.Burned, "RolesAuthority: Capability Burned");
         capabilityFlag[target][functionSig] = CapabilityFlag.Burned;
 
         emit CapabilityBurned(target, functionSig);

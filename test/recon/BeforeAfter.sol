@@ -1,11 +1,9 @@
-
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.25;
 
 import {Setup} from "./Setup.sol";
 
 abstract contract BeforeAfter is Setup {
-
     struct Vars {
         uint256 actualBalance;
         uint256 totalBalance;

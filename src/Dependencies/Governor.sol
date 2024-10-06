@@ -73,7 +73,7 @@ contract Governor is RolesAuthority {
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
         uint256 count;
-        for (uint8 i = 0; i <= type(uint8).max; ) {
+        for (uint8 i = 0; i <= type(uint8).max;) {
             if (doesUserHaveRole(user, i)) {
                 count += 1;
             }
@@ -86,7 +86,7 @@ contract Governor is RolesAuthority {
         if (count > 0) {
             uint256 j = 0;
             rolesForUser = new uint8[](count);
-            for (uint8 i = 0; i <= type(uint8).max; ) {
+            for (uint8 i = 0; i <= type(uint8).max;) {
                 if (doesUserHaveRole(user, i)) {
                     rolesForUser[j] = i;
                     j++;
@@ -105,7 +105,7 @@ contract Governor is RolesAuthority {
     /// @return roleIds An array of role IDs extracted from the byte map.
     function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
         uint256 count;
-        for (uint8 i = 0; i <= type(uint8).max; ) {
+        for (uint8 i = 0; i <= type(uint8).max;) {
             bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
             if (roleEnabled) {
                 count += 1;
@@ -119,7 +119,7 @@ contract Governor is RolesAuthority {
         if (count > 0) {
             uint256 j = 0;
             roleIds = new uint8[](count);
-            for (uint8 i = 0; i <= type(uint8).max; ) {
+            for (uint8 i = 0; i <= type(uint8).max;) {
                 bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
                 if (roleEnabled) {
                     roleIds[j] = i;
@@ -148,9 +148,7 @@ contract Governor is RolesAuthority {
     /// @notice Retrieves all function signatures enabled for a target address.
     /// @param _target The target contract address.
     /// @return _funcs An array of function signatures enabled for the target.
-    function getEnabledFunctionsInTarget(
-        address _target
-    ) public view returns (bytes4[] memory _funcs) {
+    function getEnabledFunctionsInTarget(address _target) public view returns (bytes4[] memory _funcs) {
         bytes32[] memory _sigs = enabledFunctionSigsByTarget[_target].values();
         if (_sigs.length > 0) {
             _funcs = new bytes4[](_sigs.length);

@@ -13,8 +13,8 @@ pragma solidity 0.8.25;
 // ====================================================================
 // Frax Finance: https://github.com/FraxFinance
 
-import { ERC20, ERC4626 } from "@solmate/tokens/ERC4626.sol";
-import { SafeCastLib } from "@solmate/utils/SafeCastLib.sol";
+import {ERC20, ERC4626} from "@solmate/tokens/ERC4626.sol";
+import {SafeCastLib} from "@solmate/utils/SafeCastLib.sol";
 
 /// @title LinearRewardsErc4626
 /// @notice An ERC4626 Vault implementation with linear rewards
@@ -60,12 +60,9 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _name The name of the vault
     /// @param _symbol The symbol of the vault
     /// @param _rewardsCycleLength The length of the rewards cycle in seconds
-    constructor(
-        ERC20 _underlying,
-        string memory _name,
-        string memory _symbol,
-        uint256 _rewardsCycleLength
-    ) ERC4626(_underlying, _name, _symbol) {
+    constructor(ERC20 _underlying, string memory _name, string memory _symbol, uint256 _rewardsCycleLength)
+        ERC4626(_underlying, _name, _symbol)
+    {
         REWARDS_CYCLE_LENGTH = _rewardsCycleLength;
         UNDERLYING_PRECISION = 10 ** _underlying.decimals();
 
@@ -90,13 +87,14 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @param _rewardsCycleData The rewards cycle data
     /// @param _deltaTime The time elapsed since the last rewards distribution
     /// @return _rewardToDistribute The amount of rewards to distribute
-    function calculateRewardsToDistribute(
-        RewardsCycleData memory _rewardsCycleData,
-        uint256 _deltaTime
-    ) public view virtual returns (uint256 _rewardToDistribute) {
-        _rewardToDistribute =
-            (_rewardsCycleData.rewardCycleAmount * _deltaTime) /
-            (_rewardsCycleData.cycleEnd - _rewardsCycleData.lastSync);
+    function calculateRewardsToDistribute(RewardsCycleData memory _rewardsCycleData, uint256 _deltaTime)
+        public
+        view
+        virtual
+        returns (uint256 _rewardToDistribute)
+    {
+        _rewardToDistribute = (_rewardsCycleData.rewardCycleAmount * _deltaTime)
+            / (_rewardsCycleData.cycleEnd - _rewardsCycleData.lastSync);
     }
 
     /// @notice The ```previewDistributeRewards``` function is used to preview the rewards distributed at the top of the block
@@ -113,10 +111,8 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
             : _timestamp - _lastRewardsDistribution;
 
         // Calculate the rewards to distribute
-        _rewardToDistribute = calculateRewardsToDistribute({
-            _rewardsCycleData: _rewardsCycleData,
-            _deltaTime: _deltaTime
-        });
+        _rewardToDistribute =
+            calculateRewardsToDistribute({_rewardsCycleData: _rewardsCycleData, _deltaTime: _deltaTime});
     }
 
     /// @notice The ```distributeRewards``` function distributes the rewards once per block
@@ -127,7 +123,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
         // Only write to state/emit if we actually distribute rewards
         if (_rewardToDistribute != 0) {
             storedTotalAssets += _rewardToDistribute;
-            emit DistributeRewards({ rewardsToDistribute: _rewardToDistribute });
+            emit DistributeRewards({rewardsToDistribute: _rewardToDistribute});
         }
 
         lastRewardsDistribution = block.timestamp;
@@ -149,8 +145,8 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
         require(_newRewards >= minRewardsPerPeriod, "min rewards");
 
         // Calculate the next cycle end, this keeps cycles at the same time regardless of when sync is called
-        uint40 _cycleEnd = (((_timestamp + REWARDS_CYCLE_LENGTH) / REWARDS_CYCLE_LENGTH) * REWARDS_CYCLE_LENGTH)
-            .safeCastTo40();
+        uint40 _cycleEnd =
+            (((_timestamp + REWARDS_CYCLE_LENGTH) / REWARDS_CYCLE_LENGTH) * REWARDS_CYCLE_LENGTH).safeCastTo40();
 
         // This block prevents big jumps in rewards rate in case the sync happens near the end of the cycle
         if (_cycleEnd - _timestamp < REWARDS_CYCLE_LENGTH / 40) {
@@ -173,10 +169,9 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
             block
                 .timestamp
                 // If true, then preview shows a rewards should be processed
-                .safeCastTo40() ==
-            _rewardsCycleData.lastSync &&
+                .safeCastTo40() == _rewardsCycleData.lastSync
             // Ensures that we don't write to state twice in the same block
-            rewardsCycleData.lastSync != _rewardsCycleData.lastSync
+            && rewardsCycleData.lastSync != _rewardsCycleData.lastSync
         ) {
             rewardsCycleData = _rewardsCycleData;
             emit SyncRewards({
@@ -213,7 +208,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @return _shares The amount of shares minted
     function deposit(uint256 _assets, address _receiver) public override returns (uint256 _shares) {
         syncRewardsAndDistribution();
-        _shares = super.deposit({ assets: _assets, receiver: _receiver });
+        _shares = super.deposit({assets: _assets, receiver: _receiver});
     }
 
     /// @notice The ```mint``` function allows a user to mint a given number of shares
@@ -222,7 +217,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     /// @return _assets The amount of underlying deposited
     function mint(uint256 _shares, address _receiver) public override returns (uint256 _assets) {
         syncRewardsAndDistribution();
-        _assets = super.mint({ shares: _shares, receiver: _receiver });
+        _assets = super.mint({shares: _shares, receiver: _receiver});
     }
 
     function beforeWithdraw(uint256 amount, uint256 shares) internal virtual override {
@@ -238,7 +233,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     function withdraw(uint256 _assets, address _receiver, address _owner) public override returns (uint256 _shares) {
         syncRewardsAndDistribution();
 
-        _shares = super.withdraw({ assets: _assets, receiver: _receiver, owner: _owner });
+        _shares = super.withdraw({assets: _assets, receiver: _receiver, owner: _owner});
     }
 
     /// @notice The ```redeem``` function allows a user to redeem their shares for underlying
@@ -249,7 +244,7 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
     function redeem(uint256 _shares, address _receiver, address _owner) public override returns (uint256 _assets) {
         syncRewardsAndDistribution();
 
-        _assets = super.redeem({ shares: _shares, receiver: _receiver, owner: _owner });
+        _assets = super.redeem({shares: _shares, receiver: _receiver, owner: _owner});
     }
 
     /// @notice The ```depositWithSignature``` function allows a user to use signed approvals to deposit
@@ -271,21 +266,19 @@ abstract contract LinearRewardsErc4626 is ERC4626 {
         bytes32 _s
     ) external returns (uint256 _shares) {
         uint256 _amount = _approveMax ? type(uint256).max : _assets;
-        try 
-            asset.permit({
-                owner: msg.sender,
-                spender: address(this),
-                value: _amount,
-                deadline: _deadline,
-                v: _v,
-                r: _r,
-                s: _s
-            }) 
-        { } catch {
+        try asset.permit({
+            owner: msg.sender,
+            spender: address(this),
+            value: _amount,
+            deadline: _deadline,
+            v: _v,
+            r: _r,
+            s: _s
+        }) {} catch {
             /// @notice adding try...catch around to mitigate potential permit front-running
             /// see: https://www.trust-security.xyz/post/permission-denied
         }
-        _shares = (deposit({ _assets: _assets, _receiver: _receiver }));
+        _shares = (deposit({_assets: _assets, _receiver: _receiver}));
     }
 
     //==============================================================================
