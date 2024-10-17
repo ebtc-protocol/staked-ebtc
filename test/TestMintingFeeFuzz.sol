@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.25;
 
+import {FixedPointMathLib} from "@solmate/utils/FixedPointMathLib.sol";
 import "./BaseTest.sol";
 
 contract TestMintingFeeFuzz is BaseTest {
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event FeeTaken(address indexed recipient, uint256 feeAmount);
 
     address bob;
     address alice;
@@ -69,6 +72,11 @@ contract TestMintingFeeFuzz is BaseTest {
 
         uint256 previewShares = stakedEbtc.previewDeposit(depositAmount);
         uint256 previewAmount = stakedEbtc.convertToAssets(previewShares);
+        uint256 computedFee = (depositAmount * mintingFee) / (mintingFee + stakedEbtc.FEE_PRECISION());
+
+        vm.expectEmit(true, true, true, true, address(stakedEbtc));
+        emit Deposit(bob, bob, depositAmount, previewShares);
+        emit FeeTaken(defaultFeeRecipient, computedFee);
 
         uint256 totalBalBefore = mockEbtc.balanceOf(address(stakedEbtc));
         vm.prank(bob);
@@ -82,7 +90,6 @@ contract TestMintingFeeFuzz is BaseTest {
         stakedEbtc.redeem(shares, bob, bob);
         uint256 balAfter = mockEbtc.balanceOf(bob);
 
-        uint256 computedFee = (depositAmount * mintingFee) / (mintingFee + stakedEbtc.FEE_PRECISION());
         uint256 realFee = previewAmount * mintingFee / stakedEbtc.FEE_PRECISION();
         uint256 feeBalance = mockEbtc.balanceOf(defaultFeeRecipient);
 
@@ -92,6 +99,12 @@ contract TestMintingFeeFuzz is BaseTest {
         assertEq(previewAmount, totalBalAfter - totalBalBefore);
         assertEq(computedFee, feeBalance);
         assertEq(previewAmount + feeBalance, depositAmount);
+    }
+
+    function previewMintNoFee(uint256 shares) public view virtual returns (uint256) {
+        uint256 supply = stakedEbtc.totalSupply();
+
+        return supply == 0 ? shares : FixedPointMathLib.mulDivUp(shares, stakedEbtc.totalAssets(), supply);
     }
 
     function testFeeOnMint(uint256 mintingFee, uint256 mintAmount) public {
@@ -104,6 +117,11 @@ contract TestMintingFeeFuzz is BaseTest {
         stakedEbtc.setMintingFee(mintingFee);
 
         uint256 previewAmount = stakedEbtc.previewMint(mintAmount);
+        uint256 previewAmountNoFee = previewMintNoFee(mintAmount);
+
+        vm.expectEmit(true, true, true, true, address(stakedEbtc));
+        emit Deposit(bob, bob, previewAmount, mintAmount);
+        emit FeeTaken(defaultFeeRecipient, previewAmountNoFee * stakedEbtc.mintingFee() / stakedEbtc.FEE_PRECISION());
 
         uint256 totalBalBefore = mockEbtc.balanceOf(address(stakedEbtc));
         vm.prank(bob);

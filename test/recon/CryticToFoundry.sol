@@ -197,4 +197,16 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         senderAddr = 0x0000000000000000000000000000000000030000;
         erc4626_roundtrip_invariant_f(24);
     }
+
+    function testTotalAssetsUnderflow() public {
+        vm.roll(24624);
+        vm.warp(42699);
+        senderAddr = 0x0000000000000000000000000000000000020000;
+        rewardAccrual(24362008734939755575899403689284927106098404518490315928280918353459746106966);
+
+        vm.roll(24624);
+        vm.warp(42699);
+        senderAddr = 0x0000000000000000000000000000000000010000;
+        total_assets_below_total_balance();
+    }
 }
