@@ -8,6 +8,8 @@ import {Properties} from "./Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 import "forge-std/console2.sol";
 
+import {LinearRewardsErc4626} from "src/LinearRewardsErc4626.sol";
+
 abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfter {
     uint256 public constant MAX_EBTC = 1e27;
     address internal senderAddr;
@@ -60,6 +62,20 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
 
         vm.prank(defaultGovernance);
         try stakedEbtc.setMintingFee(mintingFee) {
+        } catch {
+            t(false, "call shouldn't fail");
+        }
+    }
+
+    function calculateRewardsToDistribute(uint64 deltaTime) public prepare {
+        (uint40 cycleEnd, uint40 lastSync, uint192 rewardCycleAmount) = stakedEbtc.rewardsCycleData();
+        LinearRewardsErc4626.RewardsCycleData memory data = LinearRewardsErc4626.RewardsCycleData({
+            cycleEnd: cycleEnd,
+            lastSync: lastSync,
+            rewardCycleAmount: rewardCycleAmount
+        });
+
+        try stakedEbtc.calculateRewardsToDistribute(data, deltaTime) {
         } catch {
             t(false, "call shouldn't fail");
         }
