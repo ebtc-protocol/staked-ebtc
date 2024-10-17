@@ -47,6 +47,14 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BeforeAfte
         senderAddr = newAddr;
     }
 
+    function setMaxDistributionPerSecondPerAsset(uint256 amt) public prepare {
+        vm.prank(defaultGovernance);
+        try stakedEbtc.setMaxDistributionPerSecondPerAsset(amt) {
+        } catch {
+            t(false, "call shouldn't fail");
+        }
+    }
+
     function setMintingFee(uint256 mintingFee) public prepare {
         mintingFee = between(mintingFee, 0, stakedEbtc.MAX_MINTING_FEE());
 
