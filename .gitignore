@@ -13,8 +13,9 @@ docs/
 # Dotenv file
 .env
 
-# medusa output
+# Fuzzing
 medusa/
 crytic-export/
+echidna/
 
 temp/
