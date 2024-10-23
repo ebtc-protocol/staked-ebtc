@@ -28,15 +28,6 @@ abstract contract Setup is BaseSetup {
     address[] internal senders;
     address initialDepositor;
 
-    // forked mainnet setup
-    // StakedEbtc internal forkedStakedEbtc;
-    // IEBTC internal ebtc;
-    // address internal deployedGovernance;
-    // address internal deployedFeeRecipient;
-    // Governor internal governor;
-    // address[] internal senders;
-    // address initialDepositor;
-
     function setup() internal virtual override {
         defaultGovernance = vm.addr(0x123456);
         defaultFeeRecipient = vm.addr(0x234567);
