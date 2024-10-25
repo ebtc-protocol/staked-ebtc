@@ -10,7 +10,7 @@ To run the fuzzing setup where all contracts are deployed locally there is no fu
 
 To run the fuzzing setup on the forked chain state, rename the `.env.example` file to `.env` and add an rpc url and block that you want to fork from. 
 
-You can then run Echidna in fork mode using the `echidna-fork` command defined in the `makefile`.
+You can then run Echidna in fork mode using the `make echidna-fork` command defined in the `makefile`.
 
 NOTE: only Echidna allows fork testing, Medusa currently doesn't support this.
 
@@ -20,10 +20,12 @@ If a property breaks when a Recon job is run on it, the broken property will aut
 
 ### For Local Setup
 
-If the Recon job was not run in fork testing mode the reproducer can be added to the `CryticToFoundry` contract. 
+If the Recon job was not run in fork testing mode the reproducer can be added to the `CryticToFoundry` contract and run using `make foundry-reproducers-local` or the standard `foundry --mt <reproducer_test_name>`.
 
 ### Fork Forked Setup
 
-To ensure consistency between the environment in which Recon ran the fuzzer and your local Foundry environment, grab the block number from the job page (or coverage report for recurring jobs) and add it to the .env file along with an rpc url as described in the _Running The Fuzzer With Forked Setup_ section.
+To ensure consistency between the environment in which Recon ran the fuzzer and your local Foundry environment, grab the block number from the job page (or coverage report for recurring jobs) and add it to the `.env` file along with an rpc url as described in the _Running The Fuzzer With Forked Setup_ section.
 
-The reproducer can then be added to the `CryticToForkFoundry` contract and you will be able to reproduce the broken property from the same configuration that Echidna used. 
+The reproducer can then be added to the `CryticToForkFoundry` contract and you will be able to reproduce the broken property from the same environment configuration that Echidna used. 
+
+To run the forked reproducer you can use the `make foundry-reproducers-fork` or the standard `foundry --mt <reproducer_test_name>` command .
