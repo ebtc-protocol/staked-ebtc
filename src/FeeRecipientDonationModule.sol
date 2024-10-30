@@ -144,7 +144,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     /// @param _keeper Address which will become keeper
     function setKeeper(address _keeper) external onlyGovernance {
         if (_keeper == address(0)) revert ZeroAddress();
-        address oldKeeper = _keeper;
+        address oldKeeper = keeper;
         keeper = _keeper;
         emit KeeperUpdated(oldKeeper, _keeper);
     }
