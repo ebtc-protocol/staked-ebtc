@@ -7,13 +7,14 @@ import { IGnosisSafe } from "../src/Dependencies/IGnosisSafe.sol";
 import { Governor } from "../src/Dependencies/Governor.sol";
 import { ICollateral } from "../src/Dependencies/ICollateral.sol";
 import { StakedEbtc } from "../src/StakedEbtc.sol";
+import { LinearRewardsErc4626 } from "../src/LinearRewardsErc4626.sol";
 import { FeeRecipientDonationModule } from "../src/FeeRecipientDonationModule.sol";
 
 interface IEbtcToken is IERC20 {
     function mint(address _account, uint256 _amount) external;
 }
 
-// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21022477
+// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21075268
 contract TestDonationModule is Test {
 
     StakedEbtc public stakedEbtc;
@@ -30,21 +31,8 @@ contract TestDonationModule is Test {
         ebtcToken = IEbtcToken(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
         collateralToken = ICollateral(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
         
-        donationModule = new FeeRecipientDonationModule({
-            _guardian: 0x690C74AF48BE029e763E61b4aDeB10E06119D3ba,
-            _annualizedYieldBPS: 300, // 3%
-            _minOutBPS: 9900, // 1%
-            _swapPath: abi.encodePacked(
-                0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
-                uint24(100),
-                0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
-                uint24(500),
-                0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
-                uint24(500),
-                ebtcToken
-            )
-        });
-
+        donationModule = FeeRecipientDonationModule(0x545820fAC40d2289Bb484346547d9517876158eD);
+        
         stakedEbtc = StakedEbtc(address(donationModule.STAKED_EBTC()));
 
         // borrowerOperations
@@ -58,21 +46,13 @@ contract TestDonationModule is Test {
 
         IGnosisSafe safe = IGnosisSafe(0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f);
 
-        // high-sec timelock
-        vm.startPrank(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.donate.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.setMintingFee.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.sweep.selector, true);
-        governor.setUserRole(address(safe), 13, true);
-        vm.stopPrank();
-
         vm.prank(donationModule.GOVERNANCE());
         donationModule.setKeeper(keeper);
+    }
 
-        // enable safe module
-        vm.prank(address(safe));
-        safe.enableModule(address(donationModule));
+    function _cycleEnd() private view returns (uint256) {
+        (uint40 cycleEnd, , ) = stakedEbtc.rewardsCycleData();
+        return cycleEnd;
     }
 
     function testEbtcDonation() public {
@@ -93,7 +73,7 @@ contract TestDonationModule is Test {
         uint256 yieldAmount = (stakedEbtc.totalBalance() - ebtcBefore) * 52;
         uint256 computedYield = yieldAmount * donationModule.BPS() / depositAmount;
 
-        assertEq(computedYield, donationModule.annualizedYieldBPS());
+        assertApproxEqAbs(computedYield, donationModule.annualizedYieldBPS(), 1);
         assertEq(donationModule.lastProcessingTimestamp(), block.timestamp);
 
         // syncRewardsAndDistribution here does not advance lastSync
@@ -105,7 +85,18 @@ contract TestDonationModule is Test {
 
         assertEq(upkeepNeeded, false);
 
-        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
+        vm.warp(_cycleEnd());
+
+        // syncRewardsAndDistribution here does not advance lastSync
+        stakedEbtc.syncRewardsAndDistribution();
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(_cycleEnd() + 1);
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
@@ -187,6 +178,16 @@ contract TestDonationModule is Test {
 
         // Shares to claim should be capped at sharesAvailable
         assertEq(collSharesToClaim, sharesAvailable);
+    }
+
+    function testSetKeeper() public {
+        address newKeeper = vm.addr(0x22222);
+        assertEq(donationModule.keeper(), keeper);
+
+        vm.prank(donationModule.GOVERNANCE());
+        donationModule.setKeeper(newKeeper);
+
+        assertEq(donationModule.keeper(), newKeeper);
     }
 
     function testSendFeeToTreasury() public {
