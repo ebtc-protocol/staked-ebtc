@@ -31,8 +31,21 @@ contract TestDonationModule is Test {
         ebtcToken = IEbtcToken(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
         collateralToken = ICollateral(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
         
-        donationModule = FeeRecipientDonationModule(0x545820fAC40d2289Bb484346547d9517876158eD);
-        
+        donationModule = new FeeRecipientDonationModule({
+            _guardian: 0x690C74AF48BE029e763E61b4aDeB10E06119D3ba,
+            _annualizedYieldBPS: 300, // 3%
+            _minOutBPS: 9900, // 1%
+            _swapPath: abi.encodePacked(
+                0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
+                uint24(100),
+                0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
+                uint24(500),
+                0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
+                uint24(500),
+                ebtcToken
+            )
+        });
+                
         stakedEbtc = StakedEbtc(address(donationModule.STAKED_EBTC()));
 
         // borrowerOperations
@@ -45,6 +58,10 @@ contract TestDonationModule is Test {
         ebtcToken.approve(address(stakedEbtc), type(uint256).max);
 
         IGnosisSafe safe = IGnosisSafe(0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f);
+
+        // enable safe module
+        vm.prank(address(safe));
+        safe.enableModule(address(donationModule));
 
         vm.prank(donationModule.GOVERNANCE());
         donationModule.setKeeper(keeper);

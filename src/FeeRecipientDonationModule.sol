@@ -15,7 +15,6 @@ import { IQuoterV2 } from "./Dependencies/IQuoterV2.sol";
 import { IWstEth } from "./Dependencies/IWstEth.sol";
 import { IStakedEbtc } from "./IStakedEbtc.sol";
 import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
-import "forge-std/console2.sol";
 
 // monitoring
 // - actual slippage
@@ -260,11 +259,9 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         }
 
         // total ebtc staked
-        uint256 storedTotalAssets = STAKED_EBTC.storedTotalAssets();
-        // total ebtc staked including left over rewards from the previous cycle
-        uint256 totalBalance = STAKED_EBTC.totalBalance();
-        uint256 residual = totalBalance - storedTotalAssets;
-        uint256 ebtcYield = storedTotalAssets * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
+        uint256 totalUserBalance = STAKED_EBTC.totalBalance() - _rewardCycleAmount();
+        uint256 residual = _calculateResidual();
+        uint256 ebtcYield = totalUserBalance * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
 
         if (residual >= ebtcYield) {
             // there's still enough residual balance in the contract for this week
@@ -315,6 +312,28 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     function _lastRewardCycle() private view returns (uint256) {
         LinearRewardsErc4626.RewardsCycleData memory cycleData = STAKED_EBTC.rewardsCycleData();
         return cycleData.lastSync;
+    }
+
+    /// @notice return residual amount of rewardCycleAmount is capped
+    function _calculateResidual() private view returns (uint256) {
+        uint256 cycleAmount = _rewardCycleAmount();
+        uint256 maxAmount = _maxCycleAmount();
+
+        if (cycleAmount > maxAmount) {
+            return cycleAmount - maxAmount;
+        } else {
+            return 0;
+        }
+    }
+
+    function _rewardCycleAmount() private view returns (uint256) {
+        LinearRewardsErc4626.RewardsCycleData memory cycleData = STAKED_EBTC.rewardsCycleData();
+        return cycleData.rewardCycleAmount;
+    }
+
+    function _maxCycleAmount() private view returns (uint256) {
+        // REWARDS_CYCLE_LENGTH is in seconds
+        return STAKED_EBTC.maxDistributionPerSecondPerAsset() * STAKED_EBTC.REWARDS_CYCLE_LENGTH();
     }
 
     function _getFeeRecipientCollShares() private returns (uint256) {

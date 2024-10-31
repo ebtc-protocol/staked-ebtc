@@ -11,4 +11,5 @@ interface IStakedEbtc {
     function rewardsCycleData() external view returns (LinearRewardsErc4626.RewardsCycleData memory);
     function storedTotalAssets() external view returns (uint256);
     function totalBalance() external view returns (uint256);
+    function maxDistributionPerSecondPerAsset() external view returns (uint256);
 }
