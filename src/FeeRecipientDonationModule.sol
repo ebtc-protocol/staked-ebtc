@@ -49,6 +49,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     uint256 public annualizedYieldBPS;
     uint256 public minOutBPS;
     bytes public swapPath;
+    uint256 public executionDelay;
 
     ////////////////////////////////////////////////////////////////////////////
     // ERRORS
@@ -80,6 +81,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         uint256 wstEthAmount, 
         uint256 ebtcReceived
     );
+    event ExecutionDelayUpdated(uint256 oldDelay, uint256 newDelay);
 
     ////////////////////////////////////////////////////////////////////////////
     // MODIFIERS
@@ -159,11 +161,19 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         annualizedYieldBPS = _annualizedYieldBPS;
     }
 
-    function setMinOutBPS(uint256 _minOutBPS)  external onlyGovernance {
+    function setMinOutBPS(uint256 _minOutBPS) external onlyGovernance {
         require(minOutBPS <= BPS && minOutBPS >= MIN_BPS_LOWER_BOUND);
 
         emit MinOutUpdated(minOutBPS, _minOutBPS);
         minOutBPS = _minOutBPS;
+    }
+
+    /// @notice execution delay controls when automation will trigger
+    function setExecutionDelay(uint256 _executionDelay) external onlyGovernance() {
+        require(_executionDelay <= STAKED_EBTC.REWARDS_CYCLE_LENGTH());
+
+        emit ExecutionDelayUpdated(executionDelay, _executionDelay);
+        executionDelay = _executionDelay;
     }
 
     /// @dev Pauses the contract, which prevents executing performUpkeep.
@@ -255,6 +265,9 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
             return (upkeepNeeded_, performData_);
         }
 
+        // sync rewards to get the most up to date numbers
+        STAKED_EBTC.syncRewardsAndDistribution();
+
         // total ebtc staked
         uint256 cycleAmount = _rewardCycleAmount();
         uint256 totalBalance = STAKED_EBTC.totalBalance();
@@ -292,7 +305,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     ////////////////////////////////////////////////////////////////////////////
 
     function _isReady() private view returns (bool) {
-        return lastProcessingTimestamp < _lastRewardCycle();
+        return lastProcessingTimestamp < (_lastRewardCycle() + executionDelay);
     }
 
     function _isValidSwapPath(bytes memory _swapPath) private returns (bool) {
@@ -315,7 +328,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         return cycleData.lastSync;
     }
 
-    /// @notice return residual amount of rewardCycleAmount is capped
+    /// @notice return residual amount if rewardCycleAmount is capped
     function _calculateResidual() private view returns (uint256) {
         uint256 cycleAmount = _rewardCycleAmount();
         uint256 maxAmount = _maxCycleAmount();
