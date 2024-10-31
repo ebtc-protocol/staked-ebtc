@@ -256,7 +256,11 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         }
 
         // total ebtc staked
-        uint256 totalUserBalance = STAKED_EBTC.totalBalance() - _rewardCycleAmount();
+        uint256 cycleAmount = _rewardCycleAmount();
+        uint256 totalBalance = STAKED_EBTC.totalBalance();
+
+        // skip current round if totalBalance < cycleAmount (after mass withdrawals)
+        uint256 totalUserBalance = totalBalance > cycleAmount ? totalBalance - cycleAmount : 0;
         uint256 residual = _calculateResidual();
         uint256 ebtcYield = totalUserBalance * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
 
