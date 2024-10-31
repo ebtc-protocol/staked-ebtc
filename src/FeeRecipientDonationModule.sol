@@ -16,9 +16,6 @@ import { IWstEth } from "./Dependencies/IWstEth.sol";
 import { IStakedEbtc } from "./IStakedEbtc.sol";
 import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
 
-// monitoring
-// - actual slippage
-// - gaming total supply (excessive donations)
 contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausable {
     IGnosisSafe public constant SAFE = IGnosisSafe(0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f);
     ICollateral public constant COLLATERAL = ICollateral(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
@@ -333,7 +330,8 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
 
     function _maxCycleAmount() private view returns (uint256) {
         // REWARDS_CYCLE_LENGTH is in seconds
-        return STAKED_EBTC.maxDistributionPerSecondPerAsset() * STAKED_EBTC.REWARDS_CYCLE_LENGTH();
+        return (STAKED_EBTC.maxDistributionPerSecondPerAsset() * STAKED_EBTC.REWARDS_CYCLE_LENGTH() * 
+            STAKED_EBTC.storedTotalAssets() / 1e18);
     }
 
     function _getFeeRecipientCollShares() private returns (uint256) {
