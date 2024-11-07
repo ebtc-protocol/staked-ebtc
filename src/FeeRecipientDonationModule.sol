@@ -45,7 +45,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     address public guardian;
     address public keeper;
 
-    uint256 public lastProcessingTimestamp;
+    uint256 public lastProcessedCycle;
     uint256 public annualizedYieldBPS;
     uint256 public minOutBPS;
     bytes public swapPath;
@@ -59,7 +59,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     error NotGovernanceOrGuardian(address caller);
     error NotKeeper(address caller);
 
-    error TooSoon(uint256 lastProcessing, uint256 timestamp);
+    error TooSoon(uint256 lastProcessedCycle, uint256 timestamp);
 
     error ZeroIntervalPeriod();
     error ZeroAddress();
@@ -217,7 +217,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         if (!SAFE.isModuleEnabled(address(this))) revert ModuleMisconfigured();
 
         if (!_isReady()) {
-            revert TooSoon(lastProcessingTimestamp, block.timestamp);
+            revert TooSoon(lastProcessedCycle, block.timestamp);
         }
 
         _performUpkeep(performData);
@@ -243,8 +243,8 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
             collSharesToClaim, ebtcAmountRequired, stEthClaimed, wstEthAmount, ebtcReceived
         );
 
-        // syncRewardsAndDistribution is called elsewhere after REWARDS_CYCLE_LENGTH
-        lastProcessingTimestamp = block.timestamp;
+        // TODO: REVIEW
+        lastProcessedCycle = getCurrentCycle();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -305,7 +305,52 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     ////////////////////////////////////////////////////////////////////////////
 
     function _isReady() private view returns (bool) {
-        return lastProcessingTimestamp < (_lastRewardCycle() + executionDelay);
+
+        uint256 currenCycle = getCurrentCycle();
+        
+        /// INVARIANT: By definition we can never process in the future
+        assert(currenCycle >= lastProcessedCycle);
+
+        // We already processed this epoch
+        if(lastProcessedCycle == currenCycle) {
+            return false;
+        }
+
+        // Edge case, we skipped a process
+        if(currenCycle > lastProcessedCycle + 1) {
+            // Donate urgently, we skipped an epoch
+            return true;
+        }
+
+
+        // Sanity check, we are in the new cycle and we need to see if we're late enough
+        assert(lastProcessedCycle + 1 == currenCycle);
+        // Check if late enough
+        return isLateEnoughInTheCycle();
+    }
+
+    // TODO: Replace `lastProcessingTimestamp` with cycle
+    function getCurrentCycle() public view returns (uint256) {
+        // Truncation of current time gives us current cycle
+        // stBTC doesn't track cycle internally so we simply track it in this way
+        // We can get the start by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
+        // We can get the end by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the start
+        uint256 currentCycle = block.timestamp / STAKED_EBTC.REWARDS_CYCLE_LENGTH();
+
+        return currentCycle;
+    }
+
+    function getTimePassedInCycle() public view returns (uint256) {
+        // By definition each cycle ends and starts at REWARDS_CYCLE_LENGTH
+        uint256 timeInCycle = block.timestamp % STAKED_EBTC.REWARDS_CYCLE_LENGTH();
+
+        // Therefore the remainder is the time in the cycle
+        return timeInCycle;
+    }
+
+    function isLateEnoughInTheCycle() public view returns (bool) {
+        uint256 passedInCycle = getTimePassedInCycle();
+        return passedInCycle > executionDelay;  // enough time has passed
     }
 
     function _isValidSwapPath(bytes memory _swapPath) private returns (bool) {

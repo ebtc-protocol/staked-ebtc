@@ -91,7 +91,7 @@ contract TestDonationModule is Test {
         uint256 computedYield = yieldAmount * donationModule.BPS() / depositAmount;
 
         assertApproxEqAbs(computedYield, donationModule.annualizedYieldBPS(), 1);
-        assertEq(donationModule.lastProcessingTimestamp(), block.timestamp);
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle(), "Last cycle"); // TODO: THIS SHOULD FAIL!!!
 
         // syncRewardsAndDistribution here does not advance lastSync
         stakedEbtc.syncRewardsAndDistribution();
@@ -111,15 +111,19 @@ contract TestDonationModule is Test {
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
-        assertEq(upkeepNeeded, false);
+        assertEq(upkeepNeeded, false, "upkeep not needed");
 
-        vm.warp(_cycleEnd() + 1);
+        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH());
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
-        assertEq(upkeepNeeded, false);
+        // TODO: Sanity
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle() - 2, "Last cycle - 1");
+        // Since we skipped an epoch we want to process
+
+        assertEq(upkeepNeeded, true,  "upkeep not needed 2");
 
         // syncRewardsAndDistribution here advances lastSync
         stakedEbtc.syncRewardsAndDistribution();
@@ -130,6 +134,12 @@ contract TestDonationModule is Test {
 
         assertEq(upkeepNeeded, true);
     }
+
+    // TODO:
+    // Test:
+    // We claim, we cannot re-upkeep until epoch end of next eppoch
+    // We do not claim, we can upkeep at any time
+    // We can always ONLY claim at end of epoch, unless an epoch was skipped
 
     function _getFeeRecipientCollShares() private returns (uint256) {
         uint256 pendingShares = donationModule.ACTIVE_POOL().getSystemCollShares() - 
