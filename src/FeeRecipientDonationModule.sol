@@ -45,7 +45,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     address public guardian;
     address public keeper;
 
-    uint256 public lastProcessingTimestamp;
+    uint256 public lastProcessedCycle;
     uint256 public annualizedYieldBPS;
     uint256 public minOutBPS;
     bytes public swapPath;
@@ -59,7 +59,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     error NotGovernanceOrGuardian(address caller);
     error NotKeeper(address caller);
 
-    error TooSoon(uint256 lastProcessing, uint256 timestamp);
+    error TooSoon(uint256 lastProcessedCycle, uint256 timestamp);
 
     error ZeroIntervalPeriod();
     error ZeroAddress();
@@ -217,7 +217,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         if (!SAFE.isModuleEnabled(address(this))) revert ModuleMisconfigured();
 
         if (!_isReady()) {
-            revert TooSoon(lastProcessingTimestamp, block.timestamp);
+            revert TooSoon(lastProcessedCycle, block.timestamp);
         }
 
         _performUpkeep(performData);
@@ -244,7 +244,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         );
 
         // syncRewardsAndDistribution is called elsewhere after REWARDS_CYCLE_LENGTH
-        lastProcessingTimestamp = block.timestamp;
+        lastProcessedCycle = getCurrentCycle();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -268,23 +268,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         // sync rewards to get the most up to date numbers
         STAKED_EBTC.syncRewardsAndDistribution();
 
-        // total ebtc staked
-        uint256 cycleAmount = _rewardCycleAmount();
-        uint256 totalBalance = STAKED_EBTC.totalBalance();
-
-        // skip current round if totalBalance < cycleAmount (after mass withdrawals)
-        uint256 totalUserBalance = totalBalance > cycleAmount ? totalBalance - cycleAmount : 0;
-        uint256 residual = _calculateResidual();
-        uint256 ebtcYield = totalUserBalance * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
-
-        if (residual >= ebtcYield) {
-            // there's still enough residual balance in the contract for this week
-            // performUpkeep still needs to be called to update lastProcessingTimestamp
-            // no need to claim additional PYS
-            return (true, abi.encode(0, 0));
-        }
-
-        uint256 ebtcAmountRequired = ebtcYield - residual;
+        uint256 ebtcAmountRequired = STAKED_EBTC.storedTotalAssets() * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
         uint256 stEthToClaim = ebtcAmountRequired * 1e18 / PRICE_FEED.fetchPrice();
         uint256 collSharesToClaim = COLLATERAL.getSharesByPooledEth(stEthToClaim);
         uint256 collSharesAvailable = _getFeeRecipientCollShares();
@@ -300,12 +284,56 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         return (true, abi.encode(collSharesToClaim, ebtcAmountRequired));
     }
 
+    function getCurrentCycle() public view returns (uint256) {
+        // Truncation of current time gives us current cycle
+        // stBTC doesn't track cycle internally so we simply track it in this way
+        // We can get the start by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
+        // We can get the end by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the start
+        uint256 currentCycle = block.timestamp / STAKED_EBTC.REWARDS_CYCLE_LENGTH();
+
+        return currentCycle;
+    }
+
+    function getTimePassedInCycle() public view returns (uint256) {
+        // By definition each cycle ends and starts at REWARDS_CYCLE_LENGTH
+        uint256 timeInCycle = block.timestamp % STAKED_EBTC.REWARDS_CYCLE_LENGTH();
+
+        // Therefore the remainder is the time in the cycle
+        return timeInCycle;
+    }
+
+    function isLateEnoughInTheCycle() public view returns (bool) {
+        uint256 passedInCycle = getTimePassedInCycle();
+        return passedInCycle > executionDelay;  // enough time has passed
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // INTERNAL
     ////////////////////////////////////////////////////////////////////////////
 
     function _isReady() private view returns (bool) {
-        return lastProcessingTimestamp < (_lastRewardCycle() + executionDelay);
+
+        uint256 currentCycle = getCurrentCycle();
+
+        /// INVARIANT: By definition we can never process in the future
+        require(currentCycle >= lastProcessedCycle);
+
+        // We already processed this epoch
+        if(lastProcessedCycle == currentCycle) {
+            return false;
+        }
+
+        // Edge case, we skipped a process
+        if(currentCycle > lastProcessedCycle + 1) {
+            // Donate urgently, we skipped an epoch
+            return true;
+        }
+
+
+        // Sanity check, we are in the new cycle and we need to see if we're late enough
+        require(lastProcessedCycle + 1 == currentCycle);
+        // Check if late enough
+        return isLateEnoughInTheCycle();
     }
 
     function _isValidSwapPath(bytes memory _swapPath) private returns (bool) {
@@ -323,9 +351,9 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         return (absDiff * BPS / oraclePrice) <= (BPS - minOutBPS);
     }
 
-    function _lastRewardCycle() private view returns (uint256) {
+    function _cycleEnd() private view returns (uint256) {
         LinearRewardsErc4626.RewardsCycleData memory cycleData = STAKED_EBTC.rewardsCycleData();
-        return cycleData.lastSync;
+        return cycleData.cycleEnd;
     }
 
     /// @notice return residual amount if rewardCycleAmount is capped

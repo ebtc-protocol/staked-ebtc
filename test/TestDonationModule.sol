@@ -14,7 +14,7 @@ interface IEbtcToken is IERC20 {
     function mint(address _account, uint256 _amount) external;
 }
 
-// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21075268
+// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21162517
 contract TestDonationModule is Test {
 
     StakedEbtc public stakedEbtc;
@@ -72,11 +72,23 @@ contract TestDonationModule is Test {
         return cycleEnd;
     }
 
-    function testEbtcDonation() public {
+    function testDoDonation() public {
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        console.log("upkeepNeeded", upkeepNeeded);
+        console.logBytes(performData);
+    }
+
+    function testEbtcDonationSuccess() public {
         uint256 depositAmount = 10e18;
 
         vm.prank(depositor);
         stakedEbtc.deposit(depositAmount, depositor);
+
+        // TEST: lastProcessedCycle starts at 0
+        assertEq(donationModule.lastProcessedCycle(), 0);
 
         vm.startPrank(address(0), address(0));
         (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
@@ -91,43 +103,111 @@ contract TestDonationModule is Test {
         uint256 computedYield = yieldAmount * donationModule.BPS() / depositAmount;
 
         assertApproxEqAbs(computedYield, donationModule.annualizedYieldBPS(), 1);
-        assertEq(donationModule.lastProcessingTimestamp(), block.timestamp);
-
-        // syncRewardsAndDistribution here does not advance lastSync
-        stakedEbtc.syncRewardsAndDistribution();
+        // TEST: lastProcessedCycle == getCurrentCycle
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+        // TEST: getCurrentCycle == currentTimestamp / REWARDS_CYCLE_LENGTH
+        assertEq(donationModule.getCurrentCycle(), block.timestamp / stakedEbtc.REWARDS_CYCLE_LENGTH());
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
+        // TEST: no upkeep needed
         assertEq(upkeepNeeded, false);
 
         vm.warp(_cycleEnd());
 
-        // syncRewardsAndDistribution here does not advance lastSync
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        // advance to cycleEnd + 1
+        vm.warp(block.timestamp + 1);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: upkeep needed 1 second past cycleEnd
+        assertEq(upkeepNeeded, true);
+
         stakedEbtc.syncRewardsAndDistribution();
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
-        assertEq(upkeepNeeded, false);
+        assertEq(upkeepNeeded, true);
 
-        vm.warp(_cycleEnd() + 1);
-
-        vm.startPrank(address(0), address(0));
-        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
-        vm.stopPrank();
-
-        assertEq(upkeepNeeded, false);
-
-        // syncRewardsAndDistribution here advances lastSync
-        stakedEbtc.syncRewardsAndDistribution();
+        vm.prank(donationModule.keeper());
+        donationModule.performUpkeep(performData);
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
+        assertEq(upkeepNeeded, false);
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+    }
+
+    function testEbtcDonationWithExecutionDelay() public {
+        vm.prank(donationModule.GOVERNANCE());
+        donationModule.setExecutionDelay(2 days);
+
+        uint256 depositAmount = 10e18;
+
+        vm.prank(depositor);
+        stakedEbtc.deposit(depositAmount, depositor);
+
+        // TEST: lastProcessedCycle starts at 0
+        assertEq(donationModule.lastProcessedCycle(), 0);
+
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        vm.prank(donationModule.keeper());
+        donationModule.performUpkeep(performData);
+
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+        assertEq(donationModule.getCurrentCycle(), block.timestamp / stakedEbtc.REWARDS_CYCLE_LENGTH());
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(_cycleEnd());
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        // advance to cycleEnd + 1
+        vm.warp(block.timestamp + 1);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed, cycleEnd + 2 days required
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: upkeep needed
         assertEq(upkeepNeeded, true);
     }
 
