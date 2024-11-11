@@ -351,34 +351,6 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         return (absDiff * BPS / oraclePrice) <= (BPS - minOutBPS);
     }
 
-    function _cycleEnd() private view returns (uint256) {
-        LinearRewardsErc4626.RewardsCycleData memory cycleData = STAKED_EBTC.rewardsCycleData();
-        return cycleData.cycleEnd;
-    }
-
-    /// @notice return residual amount if rewardCycleAmount is capped
-    function _calculateResidual() private view returns (uint256) {
-        uint256 cycleAmount = _rewardCycleAmount();
-        uint256 maxAmount = _maxCycleAmount();
-
-        if (cycleAmount > maxAmount) {
-            return cycleAmount - maxAmount;
-        } else {
-            return 0;
-        }
-    }
-
-    function _rewardCycleAmount() private view returns (uint256) {
-        LinearRewardsErc4626.RewardsCycleData memory cycleData = STAKED_EBTC.rewardsCycleData();
-        return cycleData.rewardCycleAmount;
-    }
-
-    function _maxCycleAmount() private view returns (uint256) {
-        // REWARDS_CYCLE_LENGTH is in seconds
-        return (STAKED_EBTC.maxDistributionPerSecondPerAsset() * STAKED_EBTC.REWARDS_CYCLE_LENGTH() * 
-            STAKED_EBTC.storedTotalAssets() / 1e18);
-    }
-
     function _getFeeRecipientCollShares() private returns (uint256) {
         uint256 pendingShares = ACTIVE_POOL.getSystemCollShares() - CDP_MANAGER.getSyncedSystemCollShares();
         return ACTIVE_POOL.getFeeRecipientClaimableCollShares() + pendingShares;
