@@ -287,8 +287,8 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     function getCurrentCycle() public view returns (uint256) {
         // Truncation of current time gives us current cycle
         // stBTC doesn't track cycle internally so we simply track it in this way
-        // We can get the start by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
-        // We can get the end by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the start
+        // We can get the `start` by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
+        // We can get the `end` by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the `start`
         uint256 currentCycle = block.timestamp / STAKED_EBTC.REWARDS_CYCLE_LENGTH();
 
         return currentCycle;
