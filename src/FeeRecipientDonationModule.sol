@@ -266,22 +266,16 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
             return (upkeepNeeded_, performData_);
         }
 
-        // sync rewards to get the most up to date numbers
-        STAKED_EBTC.syncRewardsAndDistribution();
-
-        /// @audit this will be incorrect since it's not the total assets at end of epoch
-        // We would instead have to check against the amount of assets at the end of the epoch
-
-        // Current Assets (Since we accrued until now)
+        // Total assets until last Synch
         uint256 totalAssetsToGiveYieldTo = STAKED_EBTC.storedTotalAssets();
 
-        // We need to add the future assets from rewards, at end of this cycle
+        // We need to add rewards from the past and the future, until epoch end
         LinearRewardsErc4626.RewardsCycleData memory data = STAKED_EBTC.rewardsCycleData();
 
-        // Accrue in the future // NOTE: We can skip the accrual with a bit extra work
-        if(data.cycleEnd > block.timestamp) {
+        // Accrue in the future // NOTE: By checking this delta, we don't need to accrue to now
+        if(data.cycleEnd > data.lastSync) {
     
-            uint256 timeToEnd = data.cycleEnd - data.lastSync; // Now
+            uint256 timeToEnd = data.cycleEnd - data.lastSync;
             uint256 newRewards = STAKED_EBTC.calculateRewardsToDistribute(data, timeToEnd);
 
             // NOTE: `calculateRewardsToDistribute` caps the yield to `maxDistributionPerSecondPerAsset`
@@ -291,8 +285,9 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         }
 
 
+        // We can now calculate the yield as intended
+        // NOTE: Somebody could deposit later, but we cannot predict that, so we just accept that as a known issue
         uint256 ebtcAmountRequired = totalAssetsToGiveYieldTo * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
-
         uint256 stEthToClaim = ebtcAmountRequired * 1e18 / PRICE_FEED.fetchPrice();
         uint256 collSharesToClaim = COLLATERAL.getSharesByPooledEth(stEthToClaim);
         uint256 collSharesAvailable = _getFeeRecipientCollShares();
