@@ -304,7 +304,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
 
     function isLateEnoughInTheCycle() public view returns (bool) {
         uint256 passedInCycle = getTimePassedInCycle();
-        return passedInCycle > executionDelay;  // enough time has passed
+        return passedInCycle > executionDelay;
     }
 
     ////////////////////////////////////////////////////////////////////////////
