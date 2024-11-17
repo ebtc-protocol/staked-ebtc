@@ -13,6 +13,7 @@ import { ICollateral } from "./Dependencies/ICollateral.sol";
 import { ISwapRouter } from "./Dependencies/ISwapRouter.sol";
 import { IQuoterV2 } from "./Dependencies/IQuoterV2.sol";
 import { IWstEth } from "./Dependencies/IWstEth.sol";
+import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
 import { IStakedEbtc } from "./IStakedEbtc.sol";
 import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
 
@@ -268,7 +269,30 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
         // sync rewards to get the most up to date numbers
         STAKED_EBTC.syncRewardsAndDistribution();
 
-        uint256 ebtcAmountRequired = STAKED_EBTC.storedTotalAssets() * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
+        /// @audit this will be incorrect since it's not the total assets at end of epoch
+        // We would instead have to check against the amount of assets at the end of the epoch
+
+        // Current Assets (Since we accrued until now)
+        uint256 totalAssetsToGiveYieldTo = STAKED_EBTC.storedTotalAssets();
+
+        // We need to add the future assets from rewards, at end of this cycle
+        LinearRewardsErc4626.RewardsCycleData memory data = STAKED_EBTC.rewardsCycleData();
+
+        // Accrue in the future // NOTE: We can skip the accrual with a bit extra work
+        if(data.cycleEnd > block.timestamp) {
+    
+            uint256 timeToEnd = data.cycleEnd - data.lastSync; // Now
+            uint256 newRewards = STAKED_EBTC.calculateRewardsToDistribute(data, timeToEnd);
+
+            // NOTE: `calculateRewardsToDistribute` caps the yield to `maxDistributionPerSecondPerAsset`
+            // Technically stBTC can be made to compound, making the amt of rewards granted
+            //  higher than what we can calculate, it's QA at most
+            totalAssetsToGiveYieldTo += newRewards;
+        }
+
+
+        uint256 ebtcAmountRequired = totalAssetsToGiveYieldTo * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
+
         uint256 stEthToClaim = ebtcAmountRequired * 1e18 / PRICE_FEED.fetchPrice();
         uint256 collSharesToClaim = COLLATERAL.getSharesByPooledEth(stEthToClaim);
         uint256 collSharesAvailable = _getFeeRecipientCollShares();
