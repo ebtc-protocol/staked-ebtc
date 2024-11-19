@@ -13,6 +13,7 @@ import { ICollateral } from "./Dependencies/ICollateral.sol";
 import { ISwapRouter } from "./Dependencies/ISwapRouter.sol";
 import { IQuoterV2 } from "./Dependencies/IQuoterV2.sol";
 import { IWstEth } from "./Dependencies/IWstEth.sol";
+import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
 import { IStakedEbtc } from "./IStakedEbtc.sol";
 import { LinearRewardsErc4626 } from "./LinearRewardsErc4626.sol";
 
@@ -224,7 +225,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
     }
 
     function _performUpkeep(bytes calldata performData) internal {
-        (uint256 collSharesToClaim, uint256 ebtcAmountRequired) = abi.decode(performData, (uint256, uint256));
+        (uint256 collSharesToClaim, uint256 ebtcAmountRequired, ) = abi.decode(performData, (uint256, uint256, uint256));
 
         uint256 stEthClaimed;
         uint256 wstEthAmount;
@@ -265,10 +266,26 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
             return (upkeepNeeded_, performData_);
         }
 
-        // sync rewards to get the most up to date numbers
-        STAKED_EBTC.syncRewardsAndDistribution();
+        // Total assets until last Synch
+        uint256 totalAssetsToGiveYieldTo = STAKED_EBTC.storedTotalAssets();
 
-        uint256 ebtcAmountRequired = STAKED_EBTC.storedTotalAssets() * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
+        // We need to add rewards from the past and the future, until epoch end
+        LinearRewardsErc4626.RewardsCycleData memory data = STAKED_EBTC.rewardsCycleData();
+        uint256 lastRewardsDistribution = STAKED_EBTC.lastRewardsDistribution();
+
+        // Accrue in the future // NOTE: By checking this delta, we don't need to accrue to now
+        if(data.cycleEnd > lastRewardsDistribution) {
+
+            uint256 timeToEnd = data.cycleEnd - lastRewardsDistribution;
+            uint256 newRewards = STAKED_EBTC.calculateRewardsToDistribute(data, timeToEnd);
+
+            // NOTE: `calculateRewardsToDistribute` caps the yield to `maxDistributionPerSecondPerAsset`
+            // Technically stBTC can be made to compound, making the amt of rewards granted
+            //  higher than what we can calculate, it's QA at most
+            totalAssetsToGiveYieldTo += newRewards;
+        }
+
+        uint256 ebtcAmountRequired = totalAssetsToGiveYieldTo * annualizedYieldBPS / (BPS * WEEKS_IN_YEAR);
         uint256 stEthToClaim = ebtcAmountRequired * 1e18 / PRICE_FEED.fetchPrice();
         uint256 collSharesToClaim = COLLATERAL.getSharesByPooledEth(stEthToClaim);
         uint256 collSharesAvailable = _getFeeRecipientCollShares();
@@ -281,14 +298,14 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
             ebtcAmountRequired = COLLATERAL.getPooledEthByShares(collSharesToClaim) * PRICE_FEED.fetchPrice() / 1e18;
         }
 
-        return (true, abi.encode(collSharesToClaim, ebtcAmountRequired));
+        return (true, abi.encode(collSharesToClaim, ebtcAmountRequired, totalAssetsToGiveYieldTo));
     }
 
     function getCurrentCycle() public view returns (uint256) {
         // Truncation of current time gives us current cycle
         // stBTC doesn't track cycle internally so we simply track it in this way
-        // We can get the start by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
-        // We can get the end by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the start
+        // We can get the `start` by multiplying * STAKED_EBTC.REWARDS_CYCLE_LENGTH()
+        // We can get the `end` by adding STAKED_EBTC.REWARDS_CYCLE_LENGTH() to the `start`
         uint256 currentCycle = block.timestamp / STAKED_EBTC.REWARDS_CYCLE_LENGTH();
 
         return currentCycle;
@@ -304,7 +321,7 @@ contract FeeRecipientDonationModule is BaseModule, AutomationCompatible, Pausabl
 
     function isLateEnoughInTheCycle() public view returns (bool) {
         uint256 passedInCycle = getTimePassedInCycle();
-        return passedInCycle > executionDelay;  // enough time has passed
+        return passedInCycle > executionDelay;
     }
 
     ////////////////////////////////////////////////////////////////////////////

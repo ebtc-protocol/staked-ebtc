@@ -153,6 +153,37 @@ contract TestDonationModule is Test {
         assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
     }
 
+    function testCheckUpkeepNeverOverflows(uint256 ts) public {
+        ts = bound(ts, 0, 1000000);
+        vm.warp(block.timestamp + ts);
+        try donationModule.checkUpkeep("") {}
+        catch (bytes memory returnData) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+            assertRevertReasonNotEqual(returnData, "Panic(18)");
+        }
+    }
+
+    function testCheckTotalAssetsToGiveYieldTo() public {
+        uint256 depositAmount = 10e18;
+
+        vm.prank(depositor);
+        stakedEbtc.deposit(depositAmount, depositor);
+
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        (, , uint256 totalAssetsToGiveYieldTo) = abi.decode(performData, (uint256, uint256, uint256));
+
+        (uint40 cycleEnd, ,) = stakedEbtc.rewardsCycleData();
+
+        vm.warp(cycleEnd);
+
+        stakedEbtc.syncRewardsAndDistribution();
+
+        assertEq(totalAssetsToGiveYieldTo, stakedEbtc.storedTotalAssets());
+    }
+
     function testEbtcDonationWithExecutionDelay() public {
         vm.prank(donationModule.GOVERNANCE());
         donationModule.setExecutionDelay(2 days);
@@ -327,5 +358,53 @@ contract TestDonationModule is Test {
         uint256 balAfter = ebtcToken.balanceOf(donationModule.TREASURY());
 
         assertEq(balAfter - balBefore, 1e18);
+    }
+
+    function assertRevertReasonNotEqual(bytes memory returnData, string memory reason) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason);
+        assertTrue(!isEqual);
+    }
+
+    function _isRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason
+    ) internal pure returns (bool) {
+        return (keccak256(abi.encodePacked(_getRevertMsg(returnData))) ==
+            keccak256(abi.encodePacked(reason)));
+    }
+
+    // https://ethereum.stackexchange.com/a/83577
+    function _getRevertMsg(bytes memory returnData) internal pure returns (string memory) {
+        // Check that the data has the right size: 4 bytes for signature + 32 bytes for panic code
+        if (returnData.length == 4 + 32) {
+            // Check that the data starts with the Panic signature
+            bytes4 panicSignature = bytes4(keccak256(bytes("Panic(uint256)")));
+            for (uint i = 0; i < 4; i++) {
+                if (returnData[i] != panicSignature[i]) return "Undefined signature";
+            }
+
+            uint256 panicCode;
+            for (uint i = 4; i < 36; i++) {
+                panicCode = panicCode << 8;
+                panicCode |= uint8(returnData[i]);
+            }
+
+            // Now convert the panic code into its string representation
+            if (panicCode == 17) {
+                return "Panic(17)";
+            }
+
+            // Add other panic codes as needed or return a generic "Unknown panic"
+            return "Undefined panic code";
+        }
+
+        // If the returnData length is less than 68, then the transaction failed silently (without a revert message)
+        if (returnData.length < 68) return "Transaction reverted silently";
+
+        assembly {
+            // Slice the sighash.
+            returnData := add(returnData, 0x04)
+        }
+        return abi.decode(returnData, (string)); // All that remains is the revert string
     }
 }
