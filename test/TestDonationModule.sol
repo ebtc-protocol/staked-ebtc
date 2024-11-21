@@ -7,13 +7,14 @@ import { IGnosisSafe } from "../src/Dependencies/IGnosisSafe.sol";
 import { Governor } from "../src/Dependencies/Governor.sol";
 import { ICollateral } from "../src/Dependencies/ICollateral.sol";
 import { StakedEbtc } from "../src/StakedEbtc.sol";
+import { LinearRewardsErc4626 } from "../src/LinearRewardsErc4626.sol";
 import { FeeRecipientDonationModule } from "../src/FeeRecipientDonationModule.sol";
 
 interface IEbtcToken is IERC20 {
     function mint(address _account, uint256 _amount) external;
 }
 
-// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21022477
+// forge test --match-contract TestDonationModule --fork-url <RPC_URL> --fork-block-number 21162517
 contract TestDonationModule is Test {
 
     StakedEbtc public stakedEbtc;
@@ -44,7 +45,7 @@ contract TestDonationModule is Test {
                 ebtcToken
             )
         });
-
+                
         stakedEbtc = StakedEbtc(address(donationModule.STAKED_EBTC()));
 
         // borrowerOperations
@@ -58,28 +59,36 @@ contract TestDonationModule is Test {
 
         IGnosisSafe safe = IGnosisSafe(0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f);
 
-        // high-sec timelock
-        vm.startPrank(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.donate.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.setMintingFee.selector, true);
-        governor.setRoleCapability(13, address(stakedEbtc), StakedEbtc.sweep.selector, true);
-        governor.setUserRole(address(safe), 13, true);
-        vm.stopPrank();
-
-        vm.prank(donationModule.GOVERNANCE());
-        donationModule.setKeeper(keeper);
-
         // enable safe module
         vm.prank(address(safe));
         safe.enableModule(address(donationModule));
+
+        vm.prank(donationModule.GOVERNANCE());
+        donationModule.setKeeper(keeper);
     }
 
-    function testEbtcDonation() public {
+    function _cycleEnd() private view returns (uint256) {
+        (uint40 cycleEnd, , ) = stakedEbtc.rewardsCycleData();
+        return cycleEnd;
+    }
+
+    function testDoDonation() public {
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        console.log("upkeepNeeded", upkeepNeeded);
+        console.logBytes(performData);
+    }
+
+    function testEbtcDonationSuccess() public {
         uint256 depositAmount = 10e18;
 
         vm.prank(depositor);
         stakedEbtc.deposit(depositAmount, depositor);
+
+        // TEST: lastProcessedCycle starts at 0
+        assertEq(donationModule.lastProcessedCycle(), 0);
 
         vm.startPrank(address(0), address(0));
         (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
@@ -93,33 +102,143 @@ contract TestDonationModule is Test {
         uint256 yieldAmount = (stakedEbtc.totalBalance() - ebtcBefore) * 52;
         uint256 computedYield = yieldAmount * donationModule.BPS() / depositAmount;
 
-        assertEq(computedYield, donationModule.annualizedYieldBPS());
-        assertEq(donationModule.lastProcessingTimestamp(), block.timestamp);
+        assertApproxEqAbs(computedYield, donationModule.annualizedYieldBPS(), 1);
+        // TEST: lastProcessedCycle == getCurrentCycle
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+        // TEST: getCurrentCycle == currentTimestamp / REWARDS_CYCLE_LENGTH
+        assertEq(donationModule.getCurrentCycle(), block.timestamp / stakedEbtc.REWARDS_CYCLE_LENGTH());
 
-        // syncRewardsAndDistribution here does not advance lastSync
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(_cycleEnd());
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        // advance to cycleEnd + 1
+        vm.warp(block.timestamp + 1);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: upkeep needed 1 second past cycleEnd
+        assertEq(upkeepNeeded, true);
+
         stakedEbtc.syncRewardsAndDistribution();
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
-        assertEq(upkeepNeeded, false);
+        assertEq(upkeepNeeded, true);
 
-        vm.warp(block.timestamp + stakedEbtc.REWARDS_CYCLE_LENGTH() + 1);
+        vm.prank(donationModule.keeper());
+        donationModule.performUpkeep(performData);
 
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
         assertEq(upkeepNeeded, false);
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+    }
 
-        // syncRewardsAndDistribution here advances lastSync
+    function testCheckUpkeepNeverOverflows(uint256 ts) public {
+        ts = bound(ts, 0, 1000000);
+        vm.warp(block.timestamp + ts);
+        try donationModule.checkUpkeep("") {}
+        catch (bytes memory returnData) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+            assertRevertReasonNotEqual(returnData, "Panic(18)");
+        }
+    }
+
+    function testCheckTotalAssetsToGiveYieldTo() public {
+        uint256 depositAmount = 10e18;
+
+        vm.prank(depositor);
+        stakedEbtc.deposit(depositAmount, depositor);
+
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        (, , uint256 totalAssetsToGiveYieldTo) = abi.decode(performData, (uint256, uint256, uint256));
+
+        (uint40 cycleEnd, ,) = stakedEbtc.rewardsCycleData();
+
+        vm.warp(cycleEnd);
+
         stakedEbtc.syncRewardsAndDistribution();
 
+        assertEq(totalAssetsToGiveYieldTo, stakedEbtc.storedTotalAssets());
+    }
+
+    function testEbtcDonationWithExecutionDelay() public {
+        vm.prank(donationModule.GOVERNANCE());
+        donationModule.setExecutionDelay(2 days);
+
+        uint256 depositAmount = 10e18;
+
+        vm.prank(depositor);
+        stakedEbtc.deposit(depositAmount, depositor);
+
+        // TEST: lastProcessedCycle starts at 0
+        assertEq(donationModule.lastProcessedCycle(), 0);
+
+        vm.startPrank(address(0), address(0));
+        (bool upkeepNeeded, bytes memory performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        vm.prank(donationModule.keeper());
+        donationModule.performUpkeep(performData);
+
+        assertEq(donationModule.lastProcessedCycle(), donationModule.getCurrentCycle());
+        assertEq(donationModule.getCurrentCycle(), block.timestamp / stakedEbtc.REWARDS_CYCLE_LENGTH());
+
         vm.startPrank(address(0), address(0));
         (upkeepNeeded, performData) = donationModule.checkUpkeep("");
         vm.stopPrank();
 
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(_cycleEnd());
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed
+        assertEq(upkeepNeeded, false);
+
+        // advance to cycleEnd + 1
+        vm.warp(block.timestamp + 1);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: no upkeep needed, cycleEnd + 2 days required
+        assertEq(upkeepNeeded, false);
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.startPrank(address(0), address(0));
+        (upkeepNeeded, performData) = donationModule.checkUpkeep("");
+        vm.stopPrank();
+
+        // TEST: upkeep needed
         assertEq(upkeepNeeded, true);
     }
 
@@ -189,6 +308,16 @@ contract TestDonationModule is Test {
         assertEq(collSharesToClaim, sharesAvailable);
     }
 
+    function testSetKeeper() public {
+        address newKeeper = vm.addr(0x22222);
+        assertEq(donationModule.keeper(), keeper);
+
+        vm.prank(donationModule.GOVERNANCE());
+        donationModule.setKeeper(newKeeper);
+
+        assertEq(donationModule.keeper(), newKeeper);
+    }
+
     function testSendFeeToTreasury() public {
         vm.expectRevert(abi.encodeWithSelector(FeeRecipientDonationModule.NotGovernance.selector, depositor));
         vm.prank(depositor);
@@ -229,5 +358,53 @@ contract TestDonationModule is Test {
         uint256 balAfter = ebtcToken.balanceOf(donationModule.TREASURY());
 
         assertEq(balAfter - balBefore, 1e18);
+    }
+
+    function assertRevertReasonNotEqual(bytes memory returnData, string memory reason) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason);
+        assertTrue(!isEqual);
+    }
+
+    function _isRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason
+    ) internal pure returns (bool) {
+        return (keccak256(abi.encodePacked(_getRevertMsg(returnData))) ==
+            keccak256(abi.encodePacked(reason)));
+    }
+
+    // https://ethereum.stackexchange.com/a/83577
+    function _getRevertMsg(bytes memory returnData) internal pure returns (string memory) {
+        // Check that the data has the right size: 4 bytes for signature + 32 bytes for panic code
+        if (returnData.length == 4 + 32) {
+            // Check that the data starts with the Panic signature
+            bytes4 panicSignature = bytes4(keccak256(bytes("Panic(uint256)")));
+            for (uint i = 0; i < 4; i++) {
+                if (returnData[i] != panicSignature[i]) return "Undefined signature";
+            }
+
+            uint256 panicCode;
+            for (uint i = 4; i < 36; i++) {
+                panicCode = panicCode << 8;
+                panicCode |= uint8(returnData[i]);
+            }
+
+            // Now convert the panic code into its string representation
+            if (panicCode == 17) {
+                return "Panic(17)";
+            }
+
+            // Add other panic codes as needed or return a generic "Unknown panic"
+            return "Undefined panic code";
+        }
+
+        // If the returnData length is less than 68, then the transaction failed silently (without a revert message)
+        if (returnData.length < 68) return "Transaction reverted silently";
+
+        assembly {
+            // Slice the sighash.
+            returnData := add(returnData, 0x04)
+        }
+        return abi.decode(returnData, (string)); // All that remains is the revert string
     }
 }

@@ -44,6 +44,14 @@ abstract contract Properties is Setup, Asserts {
         t(stakedEbtc.totalBalance() >= stakedEbtc.totalAssets(), "totalBalance >= totalAssets");
     }
 
+    function lastRewardDistribution_between_lastSync_and_cycleEnd() public prepare {
+        (uint40 cycleEnd, uint40 lastSync, ) = stakedEbtc.rewardsCycleData();
+        t(
+            stakedEbtc.lastRewardsDistribution() >= lastSync && stakedEbtc.lastRewardsDistribution() <= cycleEnd, 
+            "lastRewardsDistribution >= lastSync && lastRewardsDistribution <= cycleEnd"
+        );
+    }
+
     function sum_of_user_balances_equals_total_supply() public prepare {
         uint256 sumOfUserBalances;
         for (uint256 i; i < senders.length; i++) {
