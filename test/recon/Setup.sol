@@ -3,6 +3,7 @@
 pragma solidity ^0.8.25;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
+import {console2} from "forge-std/console2.sol";
 
 import "src/LinearRewardsErc4626.sol";
 import "src/Dependencies/Auth.sol";
@@ -18,6 +19,7 @@ import {MockERC20} from "./MockERC20.sol";
 
 abstract contract Setup is BaseSetup {
 
+    // local fuzzing setup
     StakedEbtc internal stakedEbtc;
     MockERC20 internal mockEbtc;
     address internal defaultGovernance;
@@ -75,5 +77,55 @@ abstract contract Setup is BaseSetup {
         senders.push(address(0x10000));
         senders.push(address(0x20000));
         senders.push(address(0x30000));
+    }
+
+    function setupFork() internal virtual {
+        defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
+        governor = Governor(0x2A095d44831C26cFB6aCb806A6531AE3CA32DBc1);
+
+        // wrap the deployed eBTC token with the MockERC20 interface
+        mockEbtc = MockERC20(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
+        stakedEbtc = StakedEbtc(0x5884055ca6CacF53A39DA4ea76DD88956baFAee0);
+
+        senders.push(address(0x10000));
+        senders.push(address(0x20000));
+        senders.push(address(0x30000));
+        senders.push(address(governor));
+
+        // distribute whale balance among actors
+        address whale = address(0x272BF7e4Ce3308B1Fb5e54d6a1Fc32113619c401);
+        _distributeWhaleBalance(whale, address(mockEbtc), senders);
+
+        // max approves system contracts for actor tokens
+        _approveSystemForActorTokens(address(stakedEbtc), address(mockEbtc), senders);
+
+        // governance configuration
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMaxDistributionPerSecondPerAsset.selector, true);
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.donate.selector, true);
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.sweep.selector, true);
+        vm.prank(defaultGovernance);
+        governor.setRoleCapability(12, address(stakedEbtc), StakedEbtc.setMintingFee.selector, true);
+        vm.prank(defaultGovernance);
+        governor.setUserRole(defaultGovernance, 12, true);
+    }
+
+    function _distributeWhaleBalance(address whale, address token, address[] memory actors) internal {
+        uint256 whaleBalance = IERC20(token).balanceOf(whale);
+        uint256 amountPerActor = whaleBalance / actors.length;
+
+        for(uint8 i; i < actors.length; i++) {
+            vm.prank(whale);
+            IERC20(token).transfer(actors[i], amountPerActor);
+        }
+    }
+
+    function _approveSystemForActorTokens(address systemContract, address token, address[] memory actors) internal {
+        for(uint8 i; i < actors.length; i++) {
+            vm.prank(actors[i]);
+            IERC20(token).approve(systemContract, type(uint256).max);
+        }
     }
 }
